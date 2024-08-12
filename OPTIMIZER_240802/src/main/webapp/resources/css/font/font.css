@@ -1,0 +1,39 @@
+@charset "UTF-8";
+
+@import url("https://fonts.googleapis.com/earlyaccess/notosanskr.css");
+
+@font-face {
+    font-family: 'Noto Sans DemiLight';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Noto Sans KR'), local('Noto Sans KR Regular'), local('NotoSansKR-Regular'),
+    url('NotoSansCJKkr-DemiLight.woff2') format('woff2'),
+    url('NotoSansCJKkr-DemiLight.woff') format('woff');
+}
+
+@font-face {
+    font-family: 'Noto Sans KR';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Noto Sans KR'), local('NotoSansKR-Regular'),
+    url('NotoSansCJKkr-Regular.woff2') format('woff2'),
+    url('NotoSansCJKkr-Regular.woff') format('woff');
+}
+
+@font-face {
+    font-family: 'Noto Sans Light';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Noto Sans Light'),
+    url('NotoSansCJKkr-Light.woff2') format('woff2'),
+    url('NotoSansCJKkr-Light.woff') format('woff');
+}
+
+@font-face {
+    font-family: 'Noto Serif KR';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Noto Serif KR'), local('NotoSerifKR-Regular'),
+    url('noto-serif-kr-regular.woff2') format('woff2'),
+    url('noto-serif-kr-regular.woff') format('woff');
+}

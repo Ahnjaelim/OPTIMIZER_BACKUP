@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.ConfigMapper">
+
+	<select id="selectNow" resultType="String">
+		SELECT NOW();
+	</select>
+	
+	<select id="selectConfigAll" parameterType="ConfigVO" resultType="ConfigVO" flushCache="true">
+		SELECT oc.*,
+		    ROW_NUMBER() OVER (ORDER BY oc.config_category, oc.config_key) AS row_no
+		FROM  om_config oc 
+		WHERE 1 = 1	
+		ORDER BY oc.config_category, oc.config_key
+		<if test="use_cnt != true">
+			LIMIT #{size} OFFSET #{offset}
+		</if>		
+	</select>
+	
+	<select id="selectConfigByKey" parameterType="ConfigVO" resultType="ConfigVO" flushCache="true">
+		SELECT * FROM om_config oc
+		WHERE config_key = #{config_key}
+	</select>
+	
+	<update id="updateConfig" parameterType="ConfigVO">
+		UPDATE public.om_config
+		SET config_value = #{config_value}
+		WHERE config_sn = #{config_sn}
+	</update>
+	
+</mapper>

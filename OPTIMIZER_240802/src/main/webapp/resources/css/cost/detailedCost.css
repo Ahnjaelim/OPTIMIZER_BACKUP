@@ -1,0 +1,128 @@
+@charset "EUC-KR";
+
+
+#resource_chart,#site_chart{
+	width:100%;
+	    height: 300px;
+}
+
+#detailCost .row {
+	margin-right:0;
+	margin-left:0;
+}
+
+#detailHeader{
+justify-content: space-between;
+}
+
+.detail_chart,
+.chartHeaderText{
+	border: 1px solid #c0c0c0; /* 테두리 색상 지정 */
+	
+}
+
+
+
+.chartHeaderText{
+	border-radius: 10px 10px 0px 0px;
+	text-align:center !important;
+	height:40px;
+	background-color: #dcdcdc; /* 배경색 지정 */
+	font-weight: bold;
+	font-size:25px;
+	justify-content: space-around;
+	transition: all 0.5s ease;
+}
+
+.chartHeaderText:hover {background:#cfe2ff;}
+
+#chartRow> .col-6> .row{
+		
+		text-align:center;
+	}
+
+	/* tab  */ 
+	
+	
+	/*예측비용통계 셀렉트박스*/
+	
+	#estimate_cost_selectBox2{
+		justify-content: flex-end;
+		padding-left :20px;
+		padding-bottom: 10px;
+	
+	}
+	.estiSelectBox{
+		margin-left:10px;
+	}
+	#select_box_col{
+		padding-right:0;
+		
+	}
+	
+	
+	#nonOpt> .row > .col-2,
+	#estimatedCost> .row >.col-2{
+		margin-right:0;
+		margin-left:0;
+		padding:0;
+		padding-left :20px;
+		padding-bottom: 10px;
+	}
+	
+    #date_Box {
+		width: 150px;
+		border: 1px solid #999;
+		border-radius: 0px;
+		
+		white-space: nowrap;
+  		overflow: hidden;
+ 		 text-overflow: ellipsis;
+	}
+	
+	.daterangepicker {
+	 z-index : 100000 !important;
+	}
+	
+	.tabulator-row .tabulator-cell{
+	border-right: 1px solid #dee2e6 !important;
+	
+	} 
+	
+	    
+	
+	
+	.tabulator-tableholder { overflow: auto !important;}
+	
+	 .tabulator .tabulator-header .tabulator-col {
+	  text-align: center !important;
+	 }
+	.tabulator-row.tabulator-group{
+		text-align: center ;
+		padding: 0px  !important;
+		padding-left: 0px !important;
+		background :#f0d5d569 !important;
+		border-bottom: 1px solid #c8c8c8 !important;
+		border-top: 1px solid #c8c8c8 !important;
+		border-right: none;
+	}
+	
+	
+	.subtitleRight{
+	text-align: right !important;
+	padding-right: 12px !important;
+	padding-top:12px !important;
+	height:100%;
+	    overflow: hidden;
+    text-overflow: ellipsis;
+	}
+	.subtitleCenter{
+	
+	padding-right: 12px !important;
+	padding-top:12px !important;
+	height:100%;
+	    overflow: hidden;
+    text-overflow: ellipsis;
+	
+	}
+	

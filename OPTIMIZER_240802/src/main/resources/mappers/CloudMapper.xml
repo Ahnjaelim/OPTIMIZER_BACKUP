@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.CloudMapper">
+
+	<select id="selectNow" resultType="String">
+		select now()
+	</select>
+	
+	<select id="selectCloudAll" parameterType="CloudVO" resultType="CloudVO">
+		SELECT *,
+			ROW_NUMBER() OVER (ORDER BY oct.cloud_no ) AS row_no
+		FROM om_cloud_tbl oct
+		LEFT JOIN om_lgn_info oli ON oct.lgn_sn = oli.lgn_sn
+		WHERE 1 = 1
+		<if test="search_keyword != null and search_keyword != '' and search_type == 'cloud_company' ">
+			AND cloud_company LIKE CONCAT('%', #{search_keyword}, '%')
+		</if>
+		<if test="search_keyword != null and search_keyword != '' and search_type == 'cloud_nm' ">
+			AND cloud_nm LIKE CONCAT('%', #{search_keyword}, '%')
+		</if>
+		<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>			
+	</select>
+	
+	<select id="selectCloudByCloudNo" parameterType="CloudVO" resultType="CloudVO">
+		SELECT * FROM om_cloud_tbl
+		WHERE cloud_no = ${cloud_no} 
+	</select>
+	
+	<insert id="insertCloud" parameterType="CloudVO">
+		INSERT INTO public.om_cloud_tbl
+		(cloud_nm, cloud_payment, cloud_url, lgn_sn, cloud_company, rgstr_dt, updt_dt)
+		VALUES(#{cloud_nm}, #{cloud_payment}, #{cloud_url}, #{lgn_sn}, #{cloud_company}, now(), now())
+	</insert>
+	
+	<update id="updateCloud" parameterType="CloudVO">
+		UPDATE public.om_cloud_tbl
+		SET cloud_nm = #{cloud_nm}, cloud_payment = #{cloud_payment}, cloud_url = #{cloud_url}, cloud_company = #{cloud_company}, updt_dt = now()
+		WHERE cloud_no = #{cloud_no}
+	</update>
+	
+	<delete id="deleteCloud" parameterType="CloudVO">
+		DELETE FROM om_cloud_tbl 
+		WHERE cloud_no = #{cloud_no}
+	</delete>
+
+</mapper>

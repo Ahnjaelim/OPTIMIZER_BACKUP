@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.AlertMapper">
+
+	
+	<select id="getAlert" parameterType="AlertVO" resultType="AlertVO">
+		
+		select TO_CHAR(rgtr_dt, 'YYYY-MM-DD HH24:MI:SS') as rgtr_dt,
+		alarm_no,site_no,is_new,category,content
+		 from om_alarm_log where 1=1 
+			
+		<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test="is_new != null">
+    		and is_new =#{is_new}
+    	</if>
+    	<if test="category != null">
+    		and category =#{category}
+    	</if>
+    	<if test="selectYear !=null">
+    		and EXTRACT(YEAR FROM rgtr_dt) =#{selectYear}
+    	</if>
+    	<if test="selectMonth !=null">
+    		and EXTRACT(MONTH FROM rgtr_dt) =#{selectMonth}
+    	</if>
+    	order by rgtr_dt desc
+    	<if test="limit != null">
+    		limit #{limit}
+    	</if>
+    	<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>
+	</select>
+	
+	<update id="updateAlert" parameterType="AlertVO">
+		 UPDATE om_alarm_log
+        SET is_new = 0
+        WHERE 1=1
+        <if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	</update>
+	
+	<update id="confirmUpdateAlert" parameterType="AlertVO">
+		UPDATE om_alarm_log
+    	SET is_new = #{is_new}
+    	WHERE alarm_no = #{alarm_no}
+        <if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	</update>
+	
+</mapper>

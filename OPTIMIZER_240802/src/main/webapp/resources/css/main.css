@@ -1,0 +1,47 @@
+@charset "UTF-8";
+
+#resourceListModal .tabulator-cell[tabulator-field=resource_status] {padding:8px 0px 0px 0px;}
+#resourceListModal .tabulator {padding:0;}
+#resourceListModal .tabulator .tabulator-footer {padding:0px 0px 15px 0px;}
+#resourceListModal {margin:0; padding:0;}
+#resourceListModal .tabmenu {display: flex; margin:0; padding:0;}
+#resourceListModal .tabmenu li {width:25%; padding:15px; cursor: pointer; margin:3px; border:none; border-radius: 10px;}
+#resourceListModal .tabmenu p {margin:0; padding:0;}
+
+#resourceListModal .tabmenu li {background:#e7e7ea; color:#898b9a;} 
+#resourceListModal .tabmenu li[data-resource-status="1"] {background:#bff0de; color:#1cc88a;}
+#resourceListModal .tabmenu li[data-resource-status="0"] {background:#ffe5d0; color:#fd7e14;}
+#resourceListModal .tabmenu li[data-resource-status="11"] {background:#fff0cb; color:#d7a013;}
+#resourceListModal .tabmenu li[data-resource-status="2"] {background:#f8ccc8; color:#e74a3b;}
+#resourceListModal .tabmenu li[data-resource-status="99"] {background:#dae3ff; color:#4e73df;}
+#resourceListModal .tabmenu li.active {background:#898b9a; color:#ffffff;} 
+#resourceListModal .tabmenu li.active[data-resource-status="1"] {background:#1cc88a; }
+#resourceListModal .tabmenu li.active[data-resource-status="0"] {background:#fd7e14; }
+#resourceListModal .tabmenu li.active[data-resource-status="11"] {background:#d7a013; }
+#resourceListModal .tabmenu li.active[data-resource-status="2"] {background:#e74a3b; }
+#resourceListModal .tabmenu li.active[data-resource-status="99"] {background:#4e73df; }
+#resourceListModal .tabulator-footer-contents {position: relative;}
+#resourceListModal .tabulator-footer-contents .footer-btn {width:25%; flex-shrink: 0; flex-grow: 0; padding:0px 15px 0px 15px;}
+#resourceListModal .tabulator-footer-contents .footer-btn:last-child {text-align: right;}
+#resourceListModal .tabulator-col[tabulator-field="saving_rate"] {position: relative;}
+#resourceListModal .tabulator-col[tabulator-field="saving_rate"] p {margin: 0; padding: 0;}
+#resourceListModal .tabulator-col[tabulator-field="saving_rate"] p:first-child {position: relative; z-index:1;}
+#resourceListModal .tabulator-col[tabulator-field="saving_rate"] .info {position: absolute; z-index:2; top:0px; left: 0;}
+
+.status-card,
+.status-card li {list-style: none; margin:0; padding:0;}
+.status-card {display: flex; margin-right: -0.75rem; margin-left: -0.75rem;}
+.status-card li {background:#ffffff; border:1px solid #dcdcdc; border-radius: 10px; width:20%; text-align: center; margin-right: 0.75rem; margin-left: 0.75rem; box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15) !important; padding:30px; position:relative; transition: all 0.5s ease; cursor:pointer;}
+.status-card li:hover {background:#d4dfff;}
+.status-card li .more {position:absolute; top:15px; right:15px; font-size:1.5em; color:rgba(0,0,0,0.3);}
+
+.status-card .total {background:#4e73df; position: relative; padding-bottom:70px;}
+.status-card .total:hover {background:#3c62d3;}
+.status-card .total #myPieChart {position: relative; z-index: 1;}
+.status-card .total #counter {position: absolute; z-index: 2; top:50%; left:0; width:100%; text-align: center; transform:translate(0, -50%); color:#ffffff; font-weight: bold; font-size: 20px; padding-bottom:40px;}
+.status-card .total .tit {position: absolute; z-index: 2; left:0; bottom:30px; text-align: center; color:#ffffff; width:100%;}
+.status-card li p {margin:0; padding:0;}
+.status-card li .img {font-size:35px; color:#4e73df; margin:0px 0px 30px 0px;}
+.status-card .cnt {font-size:24px; font-weight: bold;}
+
+.status-card .optimized {color:#4e73df;}

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="ERROR">
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %level - %m%n%ex%n"/>
+
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <Root level="INFO" additivity="false">
+            <AppenderRef ref="console"/>
+        </Root>
+
+        <!-- log4j2 -->
+        <Logger name="log4jdbc.log4j2" level="error" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+
+        <!-- QUERY LOG -->
+        <Logger name="jdbc.sqlonly" additivity="false" level="INFO"> <!-- level="INFO" -->
+            <AppenderRef ref="console"/>
+        </Logger>
+
+        <!-- RESULTSET TABLE -->
+        <Logger name="jdbc.resultsettable" additivity="false" level="off"> <!-- level="INFO" -->
+            <AppenderRef ref="console"/>
+        </Logger>
+
+        <!-- query + time -->
+        <Logger name="jdbc.sqltiming" level="INFO" additivity="false"/> <!-- level="INFO" -->
+
+        <!-- 전체 로그 ( 양 상당히 많아짐 ) -->
+        <Logger name="jdbc.audit" level="off"/>
+
+        <!-- resultsettable + resultset (parameter) -->
+        <Logger name="jdbc.resultset" level="off"/>
+
+        <!-- connection log -->
+        <Logger name="jdbc.connection" level="off"/>
+
+        <Logger name="com.error" level="INFO" additivity="false">
+            <AppenderRef ref="rolling_error"/>
+        </Logger>
+
+        <Logger name="com.wellconn.optimizer.mapper.selectViewLogAll" level="off"/>
+
+        <Logger name="com.console" level="INFO" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        
+      <!-- HikariCP logging -->
+        <Logger name="com.zaxxer.hikari" level="INFO" additivity="false">
+            <AppenderRef ref="console"/>
+        </Logger>
+        
+        <Logger name="net.sf.log4jdbc" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>        
+                
+    </Loggers>
+</Configuration>

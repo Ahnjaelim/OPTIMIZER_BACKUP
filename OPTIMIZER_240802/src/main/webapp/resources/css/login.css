@@ -1,0 +1,17 @@
+@charset "UTF-8";
+
+html, body {height: 100%;}
+.login-outer {width: 100%; height: 100%; position: relative;}
+.login {position: absolute;	top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 520px;}
+.login .shadow {  -webkit-box-shadow: 0 19px 38px rgba(0, 0, 0, 0.30), 0 15px 12px rgba(0, 0, 0, 0.22);
+  -moz-box-shadow: 0 19px 38px rgba(0, 0, 0, 0.30), 0 15px 12px rgba(0, 0, 0, 0.22);
+  -ms-box-shadow: 0 19px 38px rgba(0, 0, 0, 0.30), 0 15px 12px rgba(0, 0, 0, 0.22);
+  -o-box-shadow: 0 19px 38px rgba(0, 0, 0, 0.30), 0 15px 12px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 19px 38px rgba(0, 0, 0, 0.30), 0 15px 12px rgba(0, 0, 0, 0.22);}
+.login h1 span {font-size: 12px; display: inline-block; font-weight: bold; position: relative; top: 4px; left: 5px;}
+.login .subtitle {font-size:15px; margin-bottom:60px;}
+.login h2 {font-size: 20px;	font-weight: bold; color: #4e73df; margin: 0px 0px 30px 0px;}
+.login .form-control-user {font-size: 14px !important; padding-left: 60px !important;}
+.login .user {margin-bottom:100px;}
+.form-group {position:relative;}
+.form-group label {position:absolute; top:12px; left:32px;}

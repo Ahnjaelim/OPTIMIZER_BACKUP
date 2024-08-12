@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.UserMapper">
+
+	<select id="selectNow" resultType="String">
+		select now()
+	</select>
+	
+	<select id="selectAllCnt" parameterType="UserVO" resultType="UserVO">
+		select count(*) as cnt
+		from om_lgn_info oli 
+		where show_yn = 1
+		    <if test="searchKeyword != ''">
+		    	<if test="searchType == 'ID'">and lgn_id like concat('%',#{searchKeyword},'%')</if>
+		    	<if test="searchType == 'NM'">and lgn_nm like concat('%',#{searchKeyword},'%')</if>
+		    	<if test="searchType == 'REG'">and rgtr_id like concat('%',#{searchKeyword},'%')</if>
+		    </if>
+	</select>
+
+	<select id="selectAll" parameterType="UserVO" resultType="UserVO">
+		select a.* from
+		(SELECT 
+		    ROW_NUMBER() OVER (order by reg_dt) AS row,
+		    oli.* 
+		FROM 
+		    om_lgn_info oli
+		    where show_yn = 1
+		    <if test="searchKeyword != ''">
+		    	<if test="searchType == 'ID'">and lgn_id like concat('%',#{searchKeyword},'%')</if>
+		    	<if test="searchType == 'NM'">and lgn_nm like concat('%',#{searchKeyword},'%')</if>
+		    	<if test="searchType == 'REG'">and rgtr_id like concat('%',#{searchKeyword},'%')</if>
+		    </if>
+		order by row desc)a
+		LIMIT 10 OFFSET #{offset}
+	</select>
+	
+	<select id="selectUserId" resultType="String">
+		select lgn_id from om_lgn_info
+	</select>
+	
+	<select id="login" parameterType="UserVO" resultType="UserVO">
+		select * from om_lgn_info
+		where lgn_id = #{lgn_id} and lgn_pswd = #{lgn_pswd}
+	</select>
+	
+	<insert id="insertUser" parameterType="UserVO" useGeneratedKeys="true" keyProperty="om_lgn_info_pkey">
+		INSERT INTO public.om_lgn_info
+		(lgn_id, lgn_nm, lgn_pswd, lgn_type, cmp_nm, show_yn, rgtr_id, reg_dt, uptr_id, updt_dt, parent_lgn_sn, first_lgn)
+		VALUES(#{lgn_id}, #{lgn_nm}, #{lgn_pswd}, #{lgn_type}, #{cmp_nm}, 1, #{rgtr_id}, now(), #{uptr_id}, now(), 0, 1)
+	</insert>
+	
+	<select id="userIdCheck">
+		select count(*) from om_lgn_info
+		where lgn_id = #{lgn_id}
+	</select>
+	
+	<update id="updateUser" parameterType="UserVO">
+		update om_lgn_info set 
+		<if test="lgn_pswd != null and lgn_pswd != ''">
+			lgn_pswd = #{lgn_pswd}, 
+		</if>
+		lgn_type = #{lgn_type}, cmp_nm = #{cmp_nm}, uptr_id = #{uptr_id}, updt_dt = now() where lgn_id = #{lgn_id}
+	</update>
+	
+	<delete id="deletedUser" parameterType="UserVO">
+		update om_lgn_info set show_yn = 0 where lgn_id = #{lgn_id}
+	</delete>
+	
+	<update id="updatePasswd" parameterType="UserVO">
+		update om_lgn_info set lgn_pswd = #{lgn_pswd}, uptr_id = #{uptr_id}, updt_dt = now()  where lgn_id = #{lgn_id}
+	</update>
+
+	<update id="updateVisitDate" parameterType="UserVO">
+		update om_lgn_info oli 
+		set visit_dt = now()
+		where lgn_id = #{lgn_id}
+	</update>
+
+</mapper>

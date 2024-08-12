@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.OptimizerLogMapper">
+
+	<select id="selectNow" resultType="String">
+		select now()
+	</select>
+	
+	<select id="selectResourceLogAllByResourceNo" parameterType="OptimizerLogVO" resultType="OptimizerLogVO">
+		SELECT ocolt.*, ocot.resource_type FROM om_cloud_optimizer_log_tbl ocolt
+		LEFT JOIN om_cloud_optimizer_tbl ocot on ocolt.resource_no = ocot.resource_no
+		WHERE ocolt.resource_no = #{resource_no}
+		ORDER BY ocolt.rgstr_dt <if test='order == null'>DESC</if>		
+	</select>
+
+	<select id="countResourceLogAllByResourceNo"  parameterType="OptimizerLogVO" resultType="java.util.HashMap">
+		WITH Subquery AS (
+		  SELECT
+		    rgstr_date,
+		    count(*) as cnt,
+		    LAG(rgstr_date) OVER (ORDER BY rgstr_date) as previous
+		  FROM
+		    om_cloud_resource_log_tbl
+		  WHERE
+		    resource_no = #{resource_no}
+		  GROUP BY rgstr_date
+		)
+		SELECT
+		  s.rgstr_date,
+		  s.cnt,
+		  s.previous,
+		  (
+		    SELECT ocolt.resource_new_size_type2  
+		    FROM om_cloud_optimizer_log_tbl ocolt
+		    WHERE TO_DATE(s.rgstr_date::text, 'YYYYMMDD') >= ocolt.rgstr_dt::date
+		      AND (
+		        CASE 
+		          WHEN s.previous IS NOT NULL THEN TO_DATE(s.previous::text, 'YYYYMMDD') <![CDATA[ < ]]> ocolt.rgstr_dt::date
+		          ELSE TRUE
+		        END
+		      )
+		      and resource_no = #{resource_no}
+		    ORDER BY ocolt.rgstr_dt DESC LIMIT 1
+		  ) as size2
+		FROM
+		  Subquery s
+		GROUP BY
+		  s.rgstr_date, s.previous, s.cnt;
+	</select>
+
+</mapper>
