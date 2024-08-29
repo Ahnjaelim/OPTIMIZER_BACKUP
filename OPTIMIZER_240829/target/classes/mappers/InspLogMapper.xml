@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.InspLogMapper">
+
+	<select id="selectNow" resultType="String">
+		select now()
+	</select>
+	
+	<select id="selectAllCnt" parameterType="InspLogVO" resultType="InspLogVO">
+		select count(*) as cnt from om_insp_log oil
+		where 1=1
+		and reg_dt between to_timestamp(#{search_from}, 'YYYY-MM-DD HH24:MI:SS') 
+		and to_timestamp(#{search_to}, 'YYYY-MM-DD HH24:MI:SS') 
+			<if test="searchKeyword != ''">
+				and lgn_id like concat('%',#{searchKeyword},'%')
+		    </if>
+	</select>
+
+	<select id="selectAll" parameterType="InspLogVO" resultType="InspLogVO">
+		select a.* from
+		(select ROW_NUMBER() OVER (order by reg_dt) AS row, * from om_insp_log oil
+		where 1=1
+		and reg_dt between to_timestamp(#{search_from}, 'YYYY-MM-DD HH24:MI:SS') 
+		and to_timestamp(#{search_to}, 'YYYY-MM-DD HH24:MI:SS') 
+			<if test="searchKeyword != ''">
+				and lgn_id like concat('%',#{searchKeyword},'%')
+		    </if>
+		order by insp_log_sn desc)a
+		LIMIT 10 OFFSET #{offset}
+	</select>
+	
+	<select id="selectMenuSn" parameterType="InspLogVO" resultType="InspLogVO">
+		select menu_sn, menu_nm, menu_addr_url from om_menu_info
+		where menu_addr_url = #{menu_addr_url}
+	</select>
+
+	<insert id="insertUserLog" parameterType="InspLogVO" useGeneratedKeys="true" keyProperty="om_lgn_info_pkey">
+		INSERT INTO om_insp_log
+		(menu_sn, acs_ip, lgn_id, lgn_nm, reg_dt, message)
+		VALUES(#{menu_sn}, #{acs_ip}, #{lgn_id}, #{lgn_nm}, now(), #{message})
+	</insert>
+	
+	
+	<select id="menuInit" resultType="OptimizerMenuVO">
+		select * from om_menu_info
+		where use_yn = 1
+		order by menu_stage, menu_sort
+	</select>
+	
+</mapper>

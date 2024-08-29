@@ -1,0 +1,155 @@
+@charset "EUC-KR";
+
+#optimize_status p{
+	    font-size: 23px;
+    font-weight: bold;
+        margin: 0;
+}
+/*예측비용통계 표*/
+#optimize_status{
+	
+	width: 100%;
+    height: 30%;
+    border: 1px solid #c0c0c0; /* 테두리 색상 지정 */
+
+}
+
+    
+#optimize_status>th, td {
+  padding: 8px;
+  text-align: center;
+}
+
+
+	
+ 	/* 첫 번째 행 스타일 */
+    #optimize_status tr:first-child {
+      
+    }
+    /* 첫 번째 행에서 첫 번째 열 스타일 */
+    #optimize_status tr:first-child td:first-child {
+      background-color: #ffffff; /* 배경색 지정 */
+      font-weight: bold;
+      border-bottom: none;
+    }
+    /* 첫 번째 행에서 첫 번째 열을 제외한 나머지 셀 스타일 */
+    #optimize_status tr:first-child td:not(:first-child) {
+      background-color: #ffe69c; /* 배경색 지정 */
+      font-weight: bold;
+      
+    }
+    /* 두 번째 행에서 첫 번째 열 스타일 */
+    #optimize_status tr:nth-child(2) td:first-child {
+      background-color: #ffffff; /* 배경색 지정 */
+       border-top: none;
+    }
+    /* 두 번째 행에서 첫 번째 열을 제외한 나머지 열 스타일 */
+    #optimize_status tr:nth-child(2) td:not(:first-child) {
+      background-color: #fff3cd ;/* 배경색 지정 */
+      
+    }
+    /* 세 번째 행 스타일 */
+    #optimize_status tr:nth-child(3) {
+      background-color: #9eeaf9; /* 배경색 지정 */
+      font-weight: bold;
+    }
+    /* 네 번째 행 스타일 */
+    #optimize_status tr:nth-child(4) {
+      background-color: #cff4fc; /* 배경색 지정 */
+    }
+    
+    
+    
+    
+    /*차트*/
+    #optimize_chart {
+    
+  width: 100%;
+  height: 100%;
+}
+
+	#nonOpt> .row,
+	#estimatedCost> .row{
+		margin-right:0;
+		margin-left:0;
+		justify-content: flex-end;
+	}
+	
+	/*예측비용통계 셀렉트박스*/
+	#estimate_cost_selectBox,
+	#estimate_cost_selectBox2{
+		justify-content: flex-end;
+		padding-left :20px;
+		padding-bottom: 10px;
+	
+	}
+	.estiSelectBox{
+		margin-left:10px;
+	}
+	
+	
+	#nonOpt> .row > .col-2,
+	#estimatedCost> .row >.col-2{
+		margin-right:0;
+		margin-left:0;
+		padding:0;
+		padding-left :20px;
+		padding-bottom: 10px;
+	}
+	
+    #date_Box {
+		width: 150px;
+		border: 1px solid #999;
+		border-radius: 0px;
+		
+		white-space: nowrap;
+  		overflow: hidden;
+ 		 text-overflow: ellipsis;
+	}
+	
+	#web_content_table{
+	overflow:auto;
+	}
+	.tabulator-tableholder { overflow: auto !important;}
+	
+	.tabulator-headers .tabulator-col .tabulator-col-content,
+.tabulator-table  .tabulator-col .tabulator-col-content {border-right:1px solid #dcdcdc !important;}
+	
+	
+	 .tabulator .tabulator-header .tabulator-col {
+	  text-align: center !important;
+	 }
+	.tabulator-row.tabulator-group{
+		text-align: center ;
+		padding: 0px  !important;
+		padding-left: 0px !important;
+		background :#f0d5d569 !important;
+		border-bottom: 1px solid #c8c8c8 !important;
+		border-top: 1px solid #c8c8c8 !important;
+		border-right: none;
+	}
+	
+	
+	.subtitleRight{
+	text-align: right !important;
+	padding-right: 12px !important;
+	padding-top:12px !important;
+	height:100%;
+	    overflow: hidden;
+    text-overflow: ellipsis;
+	}
+	.subtitleCenter{
+	
+	padding-right: 12px !important;
+	padding-top:12px !important;
+	height:100%;
+	    overflow: hidden;
+    text-overflow: ellipsis;
+	
+	}
+	
+	.tabulator-row .tabulator-cell{
+	border-right: 1px solid #dee2e6 !important;
+	
+	} 
+	

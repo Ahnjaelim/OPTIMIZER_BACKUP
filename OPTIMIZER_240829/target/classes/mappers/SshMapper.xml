@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.SshMapper">
+
+	<select id="selectNow" resultType="String">
+		select now()
+	</select>
+	
+	<select id="selectSshAll" parameterType="SshVO" resultType="SshVO">
+		SELECT *,
+			ROW_NUMBER() OVER (ORDER BY nid DESC) AS row_no 
+		FROM om_manage_ssh_info
+		ORDER BY nid DESC
+	</select>
+	
+	
+	<select id="selectSshOne" parameterType="SshVO" resultType="SshVO">
+		SELECT *
+		FROM om_manage_ssh_info
+		Where site_no=#{site_no}
+	</select>
+	
+	<select id="getSiteNo" parameterType="SshVO" resultType="SshVO">
+		select site_no from om_cloud_site_tbl ocst where site_name = #{site_nm_ssh}
+	</select>
+	
+	<insert id="insertSsh" parameterType="SshVO" >
+		INSERT INTO public.om_manage_ssh_info
+		(ssh_id, ssh_pw, ssh_port, ssh_server_ip, resource_path, cloud_no, site_no, server_type, access_key, secert_key, bucket_name)
+		VALUES(#{ssh_id}, #{ssh_pw}, #{ssh_port}, #{ssh_server_ip}, #{resource_path}, #{cloud_no}, #{site_no}, #{server_type}, #{access_key}, #{secert_key}, #{bucket_name})
+	</insert>
+	
+	<update id="updateSsh" parameterType="SshVO" >
+		UPDATE om_manage_ssh_info
+		SET ssh_id = #{ssh_id}, ssh_pw = #{ssh_pw}, ssh_port = #{ssh_port}, ssh_server_ip = #{ssh_server_ip}, resource_path = #{resource_path}, cloud_no = #{cloud_no}, site_no = #{site_no}, server_type = #{server_type}, access_key = #{access_key}, secert_key = #{secert_key}, bucket_name = #{bucket_name}
+		WHERE site_no = #{site_no}
+	</update>
+	
+	<delete id="deleteSsh" parameterType="SiteManageVO">
+		DELETE FROM om_manage_ssh_info
+		WHERE site_no = #{site_no}
+	</delete>
+</mapper>

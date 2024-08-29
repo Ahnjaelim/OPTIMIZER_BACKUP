@@ -1,0 +1,55 @@
+@charset "UTF-8";
+
+#detail-modal #folderlist {width:300px; min-width:300px; flex-shrink: 0; flex-grow: 0; height:500px; overflow:auto;}
+#detail-modal .volist-container {width:calc(100% - 1px);}
+#detail-modal #volist {}
+#detail-modal .search-keyword {text-align:right;}
+.search-type label {margin-bottom:0; width:150px; border-radius: 5px 5px 0px 0px !important; margin-right:5px !important; border: none; color:#ffffff; font-size:13px; background:rgba(0,0,0,0.5);}
+.search-type .btn {padding: 6px !important;}
+.search-type .btn:hover {background: rgba(3,142,220,0.3); color:#ffffff;}
+.search-type img {height:13px; position: relative; top:-2px;}
+#detail-modal .modal-body .content-container {border:1px solid rgba(255,255,255,0.2); border-radius: 0px 5px 5px 5px;}
+#detail-modal .modal-body .content-container #folderlist {border-right:1px solid rgba(255,255,255,0.2);}
+#detail-modal .desc {padding:10px 0px 15px 0px;}
+#detail-modal .top-content {background:rgba(255,255,255,0.1); border-radius: 5px; padding:20px; border:1px solid rgba(255,255,255,0.2); margin:0px 0px 15px 0px;}
+#detail-modal .top-content span {font-weight: bold; color:var(--color-yellow);}
+#detail-modal .optional-component {padding:0px 0px 15px 0px;}
+#detail-modal .month-btn {background:rgba(255,255,255,0.1); border-radius: 3px; border:1px solid rgba(255,255,255,0.2);}
+#current-month {font-weight:bold; display: inline-block; padding:0px 10px 0px 10px;}
+
+.search-keyword {float:right; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:3px; }
+#detail-modal .search-keyword input {outline: none; background:transparent; border:none; color:#ffffff;}
+#detail-modal .search-keyword input::placeholder  {color:rgba(255,255,255,0.5);}
+#detail-modal .search-keyword .search-btn {background:transparent; border:none; color:#ffffff;}
+
+/** 히트맵 차트 **/
+
+#heatmap-chart-container {margin-top:15px; position: relative; height:100%;}
+#heatmap-chart-container ul,
+#heatmap-chart-container li {line-height: 0;}
+#heatmap-chart {position: relative; z-index:2;}
+#heatmap-bg {position: absolute; z-index:1; top:0; left:0; width:100%; height:calc(100% - 50px); overflow:hidden;}
+#heatmap-chart ul li,
+#heatmap-bg ul li {display: inline-block;}
+#heatmap-chart ul li a,
+#heatmap-bg ul li a {display: inline-block; width:100%; height:100%; border-radius: 30px; background: rgba(255,255,255,0.5); transition: all 0.5s ease-in-out; opacity:0;}
+#heatmap-bg ul li a {opacity:0.3;}
+#heatmap-tooltip {position: absolute; z-index:3000; width:200px; padding:15px; background:rgba(50, 50, 50, 0.8); top:0; left:0; backdrop-filter: blur(5px); border:1px solid rgba(255, 255, 255, 0.2); border-radius: 5px; display: none;}
+
+#heatmap-chart ul li.level1 a {background:var(--color-green);}
+#heatmap-chart ul li.level2 a {background:var(--color-yellow);}
+#heatmap-chart ul li.level3 a {background:var(--color-orange);}
+#heatmap-chart ul li.level4 a {background:var(--color-red);}
+#heatmap-chart ul li.off {display:none;}
+#heatmap-tooltip .level1 {color:var(--color-green);}
+#heatmap-tooltip .level2 {color:var(--color-yellow);}
+#heatmap-tooltip .level3 {color:var(--color-orange);}
+#heatmap-tooltip .level4 {color:var(--color-red);}
+
+.no-data {position:absolute; top:0; left:0; width:100%; height:100%;}
+.no-data p {position:absolute; top:55%; left: 50%; transform:translate(-50%, -50%); width:100%; text-align:center; }
+
+#heatmap-chart-legend {position:absolute; top:15px; right:15px;}
+#heatmap-chart-legend li {display: inline-block; cursor: pointer; transition: all 0.3s ease-in-out;}
+#heatmap-chart-legend li:hover {opacity:0.8;}
+#heatmap-chart-legend li.off {opacity:0.2;}

@@ -1,0 +1,1541 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.OptimizerMapper">
+
+	<select id="selectNow" resultType="String">
+		select now()
+	</select>
+	
+	<sql id="site_no">
+		<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>	
+	</sql>
+	
+	<sql id="use_unstrfile">
+		<choose>
+			<when test="use_unstrfile == 1">
+			    AND resource_type BETWEEN 5 AND 9
+			</when>
+			<otherwise>
+			    AND resource_type BETWEEN 1 AND 4
+			</otherwise>
+		</choose>		
+	</sql>
+	
+	<sql id="sort">
+		<if test='sort != null and sort.size()!=0'>
+			<foreach collection="sort" item="sortItem">
+				<choose>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_type")'>
+						ORDER BY ocot.resource_type <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_name")'>
+						ORDER BY ocot.resource_name <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_status")'>
+						ORDER BY ocot.resource_status <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type1")'>
+						ORDER BY ocot.resource_new_size_type1 <![CDATA[${sortItem.dir}]]> 
+					</when>																																			
+					<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type2")'>
+						ORDER BY ocot.resource_new_size_type2 <![CDATA[${sortItem.dir}]]> 
+					</when>			
+					<when test='sortItem.field != null and sortItem.field.equals("org_time")'>
+						ORDER BY ocot.org_time <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("new_time")'>
+						ORDER BY ocot.new_time <![CDATA[${sortItem.dir}]]> 
+					</when>																																																	
+				</choose>
+			</foreach>
+		</if>
+		<if test='sort == null'>
+			ORDER BY resource_type, resource_name
+		</if>
+	</sql>	
+	
+	<sql id="resource_search">
+		AND is_use = 1
+		AND resource_org_size >= 0
+		AND resource_status IN
+	        <foreach item="item" collection="resource_status_array" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+		AND resource_type IN
+	        <foreach item="item" collection="resource_type_array" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>		        
+		<if test="search_keyword != null and search_keyword != ''">
+			AND resource_name LIKE CONCAT('%', #{search_keyword}, '%')
+		</if>
+		<if test="search_disable == 1">
+			AND resource_org_size <![CDATA[ < ]]> 0
+		</if>
+        <if test="search_page != null">
+            AND (
+            	(ocot.resource_no IN (SELECT resource_no FROM om_cloud_optimizer_rel_tbl WHERE page_no = #{search_page}))
+        		OR
+        		(ocot.resource_no IN (select resource_no FROM om_cloud_optimizer_tbl WHERE resource_type = 0 AND resource_parent_no = #{resource_parent_no}))
+        	)
+        </if>
+        <if test="search_date = 1 and startDate_ts != null and endDate_ts != null and search_date">
+        	AND rgstr_dt BETWEEN #{startDate_ts} AND #{endDate_ts}
+        </if>
+        <if test="search_condition != null">
+        </if>
+	</sql>
+
+	<select id="selectAll" parameterType="OptimizerVO" resultType="OptimizerVO">
+		select * from om_cloud_optimizer_tbl
+		where 1=1
+		AND resource_type = 0
+		<if test="resource_parent_no > 0">
+			AND resource_parent_no = #{resource_parent_no}
+		</if>
+		<if test="resource_parent_no == 0">
+			AND resource_parent_no = 0
+		</if>
+		<include refid="site_no"></include>
+	</select>
+	
+	<select id="selectPageResource" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT ocot.*,
+		    ROW_NUMBER() OVER (ORDER BY ocot.resource_type, ocot.resource_name) AS row_no FROM om_cloud_optimizer_rel_tbl ocort  
+		LEFT JOIN om_cloud_optimizer_tbl ocot ON ocort.resource_no = ocot.resource_no 
+		WHERE  1=1
+		 and ocot.resource_type > 0
+		 and ocot.resource_org_size>=0
+		<if test="page_no != 0">
+			 and ocort.page_no = #{page_no}
+		</if>
+		<include refid="resource_search"></include>
+		<include refid="site_no"></include>		
+		<include refid="sort"></include>			
+		<if test="cnt_mode != 1 and size != 0">
+			LIMIT #{size} OFFSET #{offset}
+		</if>	
+	</select>
+	
+	
+	<select id="selectResourceListByParentId" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT ocot.*, ROW_NUMBER() OVER (ORDER BY ocot.resource_type, ocot.resource_name) AS row_no
+		FROM  om_cloud_optimizer_tbl ocot
+		WHERE 1 = 1
+			<choose>
+				<when test="search_range == 0"><!-- 전체 검색 -->
+					AND ocot.resource_type > 0
+				</when>
+				<otherwise>
+					AND ocot.resource_parent_no = #{resource_parent_no}
+				</otherwise>
+			</choose>		
+			<include refid="resource_search"></include>
+			<include refid="site_no"></include>
+			<if test="time_not_null == true">
+				AND org_time > 0
+				AND new_time > 0
+			</if>
+		<include refid="sort"></include>	
+		<if test="cnt_mode != 1 and size != 0">
+			LIMIT #{size} OFFSET #{offset}
+		</if>	
+	</select>
+
+	<update id="updateResourceListByParentId" parameterType="OptimizerVO">
+		UPDATE om_cloud_optimizer_tbl ocot
+		SET resource_status = 0, algorithm_sn = CAST(NULLIF(resource_type1, '') AS INTEGER)
+		WHERE 1 = 1
+			<choose>
+				<when test="search_range == 0"><!-- 전체 검색 -->
+					AND ocot.resource_type > 0
+				</when>
+				<otherwise>
+					AND ocot.resource_parent_no = #{resource_parent_no}
+				</otherwise>
+			</choose>		
+			<include refid="resource_search"></include>
+			<include refid="site_no"></include>
+	</update>
+	
+
+	<select id="countResourceGroupByResourceParentNo" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT resource_parent_no, 
+			SUM(CASE WHEN 1 = 1
+				<include refid="resource_search"></include>
+			THEN 1 ELSE 0 END) AS count,
+			COUNT(*) AS entire_count
+		FROM om_cloud_optimizer_tbl ocot 
+		WHERE 1 = 1
+			AND resource_org_size >= 0
+			AND resource_type > 0
+			<include refid="site_no"></include>
+			<if test="search_page != null">
+				AND resource_no IN (SELECT resource_no FROM om_cloud_optimizer_rel_tbl WHERE page_no = ${search_page})			
+			</if>
+			<if test="precondition_status != null and precondition_status != ''">
+				AND resource_status = #{precondition_status}
+			</if>
+			<if test="filemanager_type == 1">
+				AND resource_type BETWEEN 1 AND 4
+			</if>
+			<if test="filemanager_type == 2">
+				AND resource_type BETWEEN 5 AND 9
+			</if>
+		GROUP BY resource_parent_no 
+	</select>
+	
+
+	<select id="selectRecursiveResourceByResourceNo" parameterType="OptimizerVO" resultType="OptimizerVO">
+		WITH RECURSIVE recursive_cte AS (
+		    SELECT
+		        resource_no,
+		        resource_parent_no,
+		        resource_no AS top_parent,
+		        resource_name,
+		        1 AS level,
+		        resource_type,
+		        resource_new_size_type1,
+		        resource_new_size_type2,
+		        resource_org
+		    FROM
+		        om_cloud_optimizer_tbl
+		    WHERE
+		        resource_no = #{resource_no}
+		    UNION ALL
+		    SELECT
+		        c.resource_no,
+		        c.resource_parent_no,
+		        p.top_parent,
+		        c.resource_name,
+		        p.level + 1,
+		        c.resource_type,
+		        c.resource_new_size_type1,
+		        c.resource_new_size_type2,
+		        c.resource_org
+		    FROM
+		        om_cloud_optimizer_tbl c
+		    JOIN
+		        recursive_cte p ON c.resource_parent_no = p.resource_no
+		),
+		subquery_log_count AS (
+			SELECT
+		        ocrlt.resource_no,
+		        sum(cnt) AS call_cnt
+		    FROM
+		        public.om_resource_call_cnt_month ocrlt
+		    GROUP BY
+		        ocrlt.resource_no
+		)
+		SELECT
+		    r.resource_name,
+		    LPAD('', r.level - 1, '--') || r.resource_name AS indented_resource_name,
+		    r.resource_no,
+		    r.resource_parent_no,
+		    r.top_parent AS top_parent_resource_no,
+		    r.level,
+		    r.resource_type,
+		    r.resource_new_size_type1,
+		    r.resource_new_size_type2,
+		    r.resource_org,
+		    COALESCE(s.call_cnt, 0) AS call_cnt
+		FROM
+		    recursive_cte r
+		LEFT JOIN
+		    subquery_log_count s ON r.resource_no = s.resource_no
+		ORDER BY
+		    top_parent, resource_no;
+	</select>
+
+
+	<select id="selectResourceByResourceNo" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT ocot.*
+		FROM om_cloud_optimizer_tbl ocot
+		LEFT JOIN (
+		    SELECT ocrlt.resource_no,  sum(cnt) AS call_cnt
+		    FROM public.om_resource_call_cnt_month ocrlt
+		    WHERE ocrlt.resource_no = #{resource_no}
+		    GROUP BY ocrlt.resource_no
+		) cc ON ocot.resource_no = cc.resource_no
+		WHERE ocot.resource_no = #{resource_no};
+	</select>
+
+	<select id="selectResourceByResourceOrg" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT * FROM
+		om_cloud_optimizer_tbl ocot
+		WHERE resource_org like
+		CONCAT('%',#{resource_org},'')
+	</select>
+	
+	<select id="selectResourceAllByPageNo" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT * FROM om_cloud_optimizer_rel_tbl ocort  
+		LEFT JOIN om_cloud_optimizer_tbl ocot ON ocort.resource_no = ocot.resource_no 
+		WHERE page_no = #{page_no} and resource_type > 0
+		ORDER BY resource_type, resource_name
+	</select>
+	
+	<update id="updateResourceStatusByResourceNo" parameterType="OptimizerVO">
+		UPDATE om_cloud_optimizer_tbl 
+		SET resource_status = ${resource_status}
+			<if test="algorithm_sn != null or algorithm_sn != 0">
+			, algorithm_sn = #{algorithm_sn}
+			</if>
+		WHERE resource_no = ${resource_no}		
+	</update>
+
+	<update id="updateResourceStatusAllByCloudNo" parameterType="OptimizerVO">
+		UPDATE om_cloud_optimizer_tbl 
+		SET resource_status = ${resource_status}, algorithm_sn = CAST(NULLIF(resource_type1, '') AS INTEGER)
+		WHERE 1 = 1
+			<include refid="site_no"></include>
+			<include refid="use_unstrfile"></include>
+	</update>
+	
+	<select id="selectResourceAllByCloudNo" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT * FROM om_cloud_optimizer_tbl ocot
+		WHERE resource_type > 0
+			<include refid="site_no"></include>
+		ORDER BY resource_org;
+	</select>
+	
+	<select id="selectResourceAllByResourceStatus" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT * FROM om_cloud_optimizer_tbl ocot
+		WHERE resource_type > 0 
+			AND resource_status = #{resource_status}
+			<include refid="site_no"></include>
+		ORDER BY resource_org;		
+	</select>
+	
+	<select id="selectResourceAllByResourceType" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT *,
+			ROW_NUMBER() OVER (ORDER BY CASE ocot.resource_status
+					WHEN 0 THEN 1
+					WHEN 1 THEN 2
+					WHEN 2 THEN 3
+					ELSE 4
+					END, ocot.resource_org) AS row_no,
+			(SELECT  sum(cnt) FROM public.om_resource_call_cnt_month ocrlt WHERE ocrlt.resource_no = ocot.resource_no) AS call_cnt		
+		FROM om_cloud_optimizer_tbl ocot
+		WHERE 1 = 1 
+			AND resource_type = #{resource_type} 
+			<if test="resource_status != 99 and resource_status != -99">
+				AND resource_status = #{resource_status}
+			</if>
+			<if test="resource_status != -99">
+				AND resource_org_size > 0
+			</if>
+			<if test="resource_status == -99">
+				AND resource_org_size <![CDATA[ < ]]> 0
+			</if>
+			<include refid="site_no"></include>			
+		<choose>
+			<when test='sort != null and sort.size()!=0'>
+				<foreach collection="sort" item="sortItem">
+					<choose>
+						<when test='sortItem.field != null and sortItem.field.equals("resource_type")'>
+							ORDER BY ocot.resource_type <![CDATA[${sortItem.dir}]]> 
+						</when>
+						<when test='sortItem.field != null and sortItem.field.equals("resource_name")'>
+							ORDER BY ocot.resource_name <![CDATA[${sortItem.dir}]]> 
+						</when>
+						<when test='sortItem.field != null and sortItem.field.equals("resource_status")'>
+							ORDER BY ocot.resource_type, ocot.resource_status <![CDATA[${sortItem.dir}]]> 
+						</when>
+						<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type1")'>
+							ORDER BY ocot.resource_type, ocot.resource_new_size_type1 <![CDATA[${sortItem.dir}]]> 
+						</when>																																			
+						<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type2")'>
+							ORDER BY ocot.resource_type, ocot.resource_new_size_type2 <![CDATA[${sortItem.dir}]]> 
+						</when>		
+						<when test='sortItem.field != null and sortItem.field.equals("resource_call_cnt")'>
+							ORDER BY ocot.resource_type, ocot.call_cnt <![CDATA[${sortItem.dir}]]> 
+						</when>																																								
+					</choose>
+				</foreach>
+			</when>		
+			<when test="resource_status == 99">
+				ORDER BY CASE resource_status
+					WHEN 0 THEN 1
+					WHEN 1 THEN 2
+					WHEN 2 THEN 3
+					ELSE 4
+					END, resource_org
+			</when>
+			<otherwise>
+				ORDER BY resource_org
+			</otherwise>
+		</choose>
+		<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>	
+	</select>
+	
+	<select id="selectResourceAllByResourceTypeSimple" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT * FROM om_cloud_optimizer_tbl ocot
+		WHERE resource_type = #{resource_type}
+			AND resource_org_size > 0
+			<include refid="site_no"></include>				
+	</select>
+
+	<select id="countResourceAllByResourceType" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT resource_status, count(*)
+		FROM om_cloud_optimizer_tbl ocot
+		WHERE resource_type = #{resource_type}
+			AND resource_org_size > 0
+			<include refid="site_no"></include>		
+		GROUP BY resource_status
+		UNION ALL
+		SELECT 99, COUNT(*) 
+		FROM om_cloud_optimizer_tbl 
+		WHERE resource_type = #{resource_type} 
+			AND resource_org_size <![CDATA[ >= ]]> 0
+			<include refid="site_no"></include>			
+		UNION ALL
+		SELECT -99, COUNT(*) 
+		FROM om_cloud_optimizer_tbl 
+		WHERE resource_type = #{resource_type} 
+			AND resource_org_size <![CDATA[ < ]]> 0
+			<include refid="site_no"></include>		
+	</select>
+	
+	<select id="countResourceByRgstrDate" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT rgstr_date, count(*) FROM om_cloud_resource_log_tbl ocrlt  
+		WHERE resource_no = #{resource_no}
+		GROUP BY rgstr_date 	
+	</select>
+	
+
+	
+
+
+	<select id="selectResourceFolderAll" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		WITH RECURSIVE ResourceHierarchy AS (
+		    SELECT 
+		        resource_no,
+		        resource_name,
+		        resource_parent_no,
+		        site_no,
+		        0 AS level
+		    FROM 
+		        om_cloud_optimizer_tbl 
+		    WHERE 
+		        resource_parent_no = 0
+		  UNION ALL
+		    SELECT 
+		        child.resource_no,
+		        child.resource_name,
+		        child.resource_parent_no,
+		        child.site_no,
+		        parent.level + 1 AS level
+		    FROM 
+		        om_cloud_optimizer_tbl AS child
+		    INNER JOIN 
+		        ResourceHierarchy AS parent ON child.resource_parent_no = parent.resource_no
+		    WHERE
+		        child.resource_type = 0
+		)
+		SELECT 
+		    LPAD('', level, ' ') || resource_no AS indented_resource_no,
+		    resource_no,
+		    resource_name,
+		    resource_parent_no,
+		    site_no,
+		    level,
+		    0 AS count,
+		    0 AS total_count,
+		    0 AS entire_count
+		FROM 
+		    ResourceHierarchy
+		ORDER BY 
+		    level, resource_no;
+	</select>
+	
+	<select id="selectResourceSizeSum" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT SUM(resource_org_size) AS org_sum, SUM(resource_new_size_type2) AS type2_sum FROM om_cloud_optimizer_tbl ocot
+		WHERE resource_new_size_type2 > 0
+		<include refid="site_no"></include>
+	</select>
+	
+	<select id="selectResourceMonthlyTraffic" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		WITH monthly_calls AS (
+		    ocrlt.resource_no,
+		        sum(cnt) AS call_count
+		    FROM
+		        public.om_resource_call_cnt_month ocrlt
+		    WHERE TO_TIMESTAMP(ocrlt.rgstr_date::text, 'YYYYMMDD') >= DATE_TRUNC('MONTH', CURRENT_DATE) AND 
+		          TO_TIMESTAMP(ocrlt.rgstr_date::text, 'YYYYMMDD') <![CDATA[<]]> DATE_TRUNC('MONTH', CURRENT_DATE) + INTERVAL '1 MONTH'
+		    GROUP BY  ocrlt.resource_no
+		)
+		SELECT ocot.resource_type,
+		       SUM(mc.month_call_cnt * ocot.resource_org_size) AS org_traffic,
+		       SUM(mc.month_call_cnt * ocot.resource_new_size_type2) AS type2_traffic
+		FROM om_cloud_optimizer_tbl ocot 
+		LEFT JOIN monthly_calls mc
+		ON mc.resource_no = ocot.resource_no
+		WHERE ocot.resource_type IN (1, 2, 3, 4)
+			<include refid="site_no"></include>
+		GROUP BY ocot.resource_type;
+	</select>
+	
+	<select id="selectResourceMonthlyTrafficByResourceType" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT ocot.resource_no,
+				ocot.resource_name,
+				ocot.resource_org_size,
+				ocot.resource_new_size_type2,
+		       month_call_cnt,
+		       month_call_cnt * ocot.resource_org_size as month_org_traffic,
+		       month_call_cnt * ocot.resource_new_size_type2 as month_type2_traffic
+		FROM om_cloud_optimizer_tbl ocot 
+		LEFT JOIN (
+		    SELECT resource_no, 
+		            sum(cnt) AS month_call_cnt
+		    FROM  public.om_resource_call_cnt_month ocrlt 
+		    WHERE TO_TIMESTAMP(ocrlt.rgstr_date::text, 'YYYYMMDD') >= DATE_TRUNC('MONTH', CURRENT_DATE) AND 
+		          TO_TIMESTAMP(ocrlt.rgstr_date::text, 'YYYYMMDD') <![CDATA[<]]> DATE_TRUNC('MONTH', CURRENT_DATE) + INTERVAL '1 MONTH'
+		    GROUP BY ocrlt.resource_no
+		) AS sub
+		ON sub.resource_no = ocot.resource_no
+		WHERE ocot.resource_type = ${resource_type}
+			<include refid="site_no"></include>
+		ORDER BY month_type2_traffic desc
+		LIMIT 10 	
+	</select>
+	
+	<select id="countResourceGroupByResourceType" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		select resource_type, count(*) from om_cloud_optimizer_tbl ocot 
+		group by resource_type 	
+	</select>
+	
+	<select id="selectMonthlyTrafficByType" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		WITH call_count_query AS (
+		    SELECT  
+		         ocrlt.resource_no,
+		         sum(cnt) AS call_count
+		    FROM
+		        public.om_resource_call_cnt_month ocrlt
+		    GROUP BY 
+		        ocrlt.resource_no
+		)
+		SELECT 
+		    ocot.resource_type,
+		    SUM(ocot.resource_new_size_type1 * cc.call_count) AS traffic1,
+		    SUM(CASE 
+		        WHEN ocot.resource_new_size_type2 = 0 THEN ocot.resource_new_size_type1 * cc.call_count
+		        ELSE ocot.resource_new_size_type2 * cc.call_count
+		    END) AS traffic2
+		FROM 
+		    om_cloud_optimizer_tbl ocot
+		JOIN 
+		    call_count_query cc ON ocot.resource_no = cc.resource_no
+		WHERE 
+		    ocot.resource_new_size_type1 > 0
+		    <include refid="site_no"></include>
+		GROUP BY 
+		    ocot.resource_type;	
+	</select>
+	
+	<select id="selectMonthlyTrafficByStatus" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		WITH call_count_query AS (
+		    SELECT  
+		         ocrlt.resource_no,
+		        sum(cnt) AS call_count
+		    FROM
+		        public.om_resource_call_cnt_month ocrlt
+		    WHERE 
+		        ocrlt.rgstr_date >= #{startDate} 
+		        AND ocrlt.rgstr_date <![CDATA[<]]> #{endDate}
+		    GROUP BY 
+		        ocrlt.resource_no
+		)
+		SELECT 
+		    ocot.resource_status,
+		    SUM(ocot.resource_new_size_type1 * cc.call_count) AS traffic1,
+		    SUM(CASE 
+		        WHEN ocot.resource_new_size_type2 = 0 THEN ocot.resource_new_size_type1 * cc.call_count
+		        ELSE ocot.resource_new_size_type2 * cc.call_count
+		    END) AS traffic2
+		FROM 
+		    om_cloud_optimizer_tbl ocot
+		JOIN 
+		    call_count_query cc ON ocot.resource_no = cc.resource_no
+		WHERE 
+		    ocot.resource_new_size_type1 > 0
+		    <include refid="site_no"></include>
+		GROUP BY 
+		    ocot.resource_status;		
+	</select>	
+	
+	<select id="selectMonthlyTrafficPredict" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		WITH resource_log_counts AS (
+		    SELECT ocrlt.resource_no,
+		        sum(cnt) AS call_count
+		    FROM public.om_resource_call_cnt_month ocrlt
+		    WHERE ocrlt.rgstr_date BETWEEN #{startDate} AND #{endDate}
+		    GROUP BY   ocrlt.resource_no
+		)
+		SELECT 
+		    COALESCE(SUM(rlog.log_count * ocot.resource_new_size_type1), 0) AS traffic1,
+		    COALESCE(SUM(rlog.log_count * ocot.resource_new_size_type1 * #{avg_comp_rate}), 0) AS traffic2
+		FROM om_cloud_optimizer_tbl ocot
+		INNER JOIN resource_log_counts rlog ON ocot.resource_no = rlog.resource_no
+		WHERE ocot.resource_status = 0 
+			AND ocot.resource_org_size > 0
+			<include refid="site_no"></include>
+	</select>
+
+	<select id="savedTraffic" parameterType="OptimizerVO" resultType="java.util.HashMap">
+	SELECT resource_name,
+	resource_new_size_type1,
+	resource_new_size_type2,
+	(SELECT count(*) FROM om_cloud_resource_log_tbl ocrlt WHERE ocot.resource_no  = ocrlt.resource_no) AS 조회수,
+	(SELECT count(*) FROM om_cloud_resource_log_tbl ocrlt WHERE ocot.resource_no  = ocrlt.resource_no) * resource_new_size_type1 AS optimizedBeforeTraffic,
+	(SELECT count(*) FROM om_cloud_resource_log_tbl ocrlt WHERE ocot.resource_no  = ocrlt.resource_no) * resource_new_size_type2 AS optimizedAfterTraffic
+	FROM om_cloud_optimizer_tbl ocot 
+	</select>
+
+	<select id="selectCountByResourceStatus" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT resource_type, 
+			COUNT(*) AS total, 
+			(SELECT COUNT(*) 
+				FROM om_cloud_optimizer_tbl ocot2 
+				where ocot.resource_type = ocot2.resource_type 
+				AND ocot2.resource_status = 1
+				<include refid="site_no"></include>
+			) AS status1_count,  
+			(SELECT COUNT(*) 
+				FROM om_cloud_optimizer_tbl ocot2 
+				where ocot.resource_type = ocot2.resource_type 
+				AND ocot2.resource_status = -1 
+				AND resource_new_size_type1 != -1
+				<include refid="site_no"></include>
+			) AS status_minus_count  
+		FROM om_cloud_optimizer_tbl ocot 
+		WHERE 1 = 1
+			<include refid="site_no"></include>
+		GROUP BY resource_type
+	</select>
+	
+	<sql id="count_common_condition">
+	    AND ${tableAlias}.resource_org_size > 0
+	    AND ${tableAlias}.is_use = 1
+	    <if test="site_list != null and site_list.size() > 0">
+	        AND ${tableAlias}.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+	    </if>
+	</sql>
+		
+	<select id="selectCountGroupByTypeAndStatus" parameterType="OptimizerVO" resultType="java.util.HashMap">
+	    WITH statuses AS (SELECT unnest(ARRAY[-1, 0, 1, 2, 11]) AS resource_status),
+	    types AS (SELECT unnest(ARRAY[1, 2, 3, 4, 5, 6, 7, 8, 9]) AS resource_type),
+	    status_type_combinations AS (SELECT s.resource_status, t.resource_type FROM statuses s CROSS JOIN types t)
+	    SELECT 
+	        stc.resource_status, 
+	        stc.resource_type, 
+ 			COALESCE(COUNT(CASE 
+                   WHEN 1 = 1 <include refid="count_common_condition"><property name="tableAlias" value="ocot1"/></include>
+                   THEN 1 
+                   ELSE NULL 
+            	END), 0) AS status_count, 
+	        (SELECT COUNT(*) 
+	         FROM om_cloud_optimizer_tbl ocot2 
+	         WHERE 1=1
+	           <include refid="count_common_condition"><property name="tableAlias" value="ocot2"/></include>
+	           AND ocot2.resource_type = stc.resource_type) AS type_count,
+		    CASE 
+		        WHEN (
+		            SELECT COUNT(*) 
+		            FROM om_cloud_optimizer_tbl ocot2 
+		            WHERE ocot2.resource_org_size > 0 
+		              AND ocot2.is_use = 1 
+		              AND ocot2.site_no IN (CAST('91' AS INTEGER)) 
+		              AND ocot2.resource_type = stc.resource_type
+		        ) > 0 
+		        THEN (
+		            COALESCE(
+		                CAST(COUNT(CASE 
+		                            WHEN 1 = 1 <include refid="count_common_condition"><property name="tableAlias" value="ocot1"/></include>
+		                            THEN 1 
+		                            ELSE NULL 
+		                          END) AS DECIMAL) / 
+		                NULLIF(
+		                    (
+		                        SELECT COUNT(*) 
+		                        FROM om_cloud_optimizer_tbl ocot2 
+		                        WHERE 1 = 1 <include refid="count_common_condition"><property name="tableAlias" value="ocot2"/></include> 
+		                          AND ocot2.resource_type = stc.resource_type
+		                    ), 0
+		                ), 0) * 100
+		        )::int 
+		        ELSE 0 
+		    END AS percentage 
+	    FROM status_type_combinations stc
+	    LEFT JOIN om_cloud_optimizer_tbl ocot1 
+	    ON stc.resource_status = ocot1.resource_status 
+	        AND stc.resource_type = ocot1.resource_type 
+	    WHERE 1=1
+	    GROUP BY stc.resource_status, stc.resource_type
+	    ORDER BY stc.resource_type, stc.resource_status;
+	</select>
+
+	<select id="selectResourceAllUnoptimized" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		 SELECT * FROM (
+			SELECT 
+			    resource_no, 
+			    resource_type, 
+			    resource_name AS x, 
+			    resource_new_size_type1,
+			    resource_status,
+			    cloud_no,
+			    ROW_NUMBER() OVER (ORDER BY ocot.resource_type, ocot.resource_name) AS row_no,
+			    (SELECT sum(cnt) FROM public.om_resource_call_cnt_month ocrlt WHERE ocot.resource_no = ocrlt.resource_no) AS call_cnt,
+			    (SELECT COUNT(*) FROM om_cloud_resource_log_tbl ocrlt WHERE ocot.resource_no = ocrlt.resource_no) * resource_new_size_type1 AS y
+			FROM 
+			    om_cloud_optimizer_tbl ocot 
+			WHERE 
+			    resource_status = -1
+			    AND resource_type BETWEEN 
+			    <include refid="site_no"></include>
+			ORDER BY 
+			    y DESC
+			LIMIT 10) AS sub_query
+		WHERE sub_query.y > 0		
+	</select>
+
+	<select id="selectResourceAllUnoptimizedBySize" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT * FROM (
+			SELECT 
+			    resource_no, 
+			    resource_type, 
+			    resource_name AS x, 
+			    resource_new_size_type1,
+			    resource_status,
+			    0 AS call_cnt,
+			    resource_new_size_type1 AS y
+			FROM 
+			    om_cloud_optimizer_tbl ocot 
+			WHERE 
+			    resource_status = -1
+			    AND resource_type > 0
+			    <include refid="site_no" />	
+			ORDER BY 
+			    y DESC
+			LIMIT 10) AS sub_query
+		WHERE sub_query.y > 0	
+	</select>
+	
+	<insert id="insertFakeLog">
+		INSERT INTO public.om_cloud_resource_log_tbl
+		(rgstr_dt, resource_no, cloud_no, rgstr_date, rgstr_hour, rgstr_min, rgstr_yyyy, rgstr_mm, rgstr_dd, site_no, page_no)
+		VALUES(
+			now(), 
+			18968, 
+			4, 
+			EXTRACT(YEAR FROM NOW()) * 10000 + EXTRACT(MONTH FROM NOW()) * 100 + EXTRACT(DAY FROM NOW()), 
+			EXTRACT(HOUR FROM CURRENT_TIME), 
+			EXTRACT(MINUTE FROM CURRENT_TIME), 
+			EXTRACT(YEAR FROM NOW()), 
+			EXTRACT(MONTH FROM NOW()), 
+			EXTRACT(DAY FROM NOW()), 
+			91, 
+			782
+		);	
+	</insert>
+	
+	<select id="selectViewLogAll" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT ocrlt.log_sn, ocrlt.rgstr_dt, ocrlt.resource_no, ocot.resource_new_size_type1, ocot.resource_new_size_type2, ocot.resource_type, ocot.resource_status, ocot.org_time, ocot.new_time, 0 AS show_yn
+		FROM om_cloud_resource_log_tbl ocrlt
+		LEFT JOIN om_cloud_optimizer_tbl ocot ON ocrlt.resource_no = ocot.resource_no 
+		WHERE ocrlt.rgstr_dt BETWEEN NOW() - INTERVAL '1 second' AND NOW()
+			AND ocot.resource_type > 0
+			<if test="site_list != null and site_list.size() > 0">
+		        AND ocrlt.site_no IN
+		        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+		            CAST(#{item} AS INTEGER)
+		        </foreach>
+	    	</if>	
+		ORDER BY log_sn
+	</select>
+	
+	<select id="averageCompressionRate" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+	SELECT
+		a.resource_org_size,
+		a.resource_new_size_type2,
+		a.updt_dt,
+	CASE WHEN a.updt_dt IS NOT NULL THEN 1 ELSE 0 END AS resource_status,
+		a.cloud_no,
+	COALESCE(b.resource_call_cnt, 0) AS resource_call_cnt
+	FROM
+		om_cloud_optimizer_tbl a
+	LEFT JOIN (
+	SELECT
+		resource_no,
+	sum(cnt) AS resource_call_cnt
+	FROM
+		 public.om_resource_call_cnt_month ocrlt
+	GROUP BY
+		ocrlt.resource_no
+		) b ON a.resource_no = b.resource_no
+	WHERE
+	a.resource_type != 0
+	AND a.resource_org_size != -1; 
+	</select>
+
+	<select id="selectAvgCompRate" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		WITH size_sums AS (
+		    SELECT SUM(resource_new_size_type1) AS type1size_sum, SUM(resource_new_size_type2) AS type2size_sum
+		    FROM om_cloud_optimizer_tbl 
+		    WHERE resource_status = 1
+		    	<include refid="site_no"></include>
+		)
+		SELECT type1size_sum, 
+		    type2size_sum,
+		    ROUND((1 - (type2size_sum::numeric / type1size_sum::numeric)) * 100, 1) AS avg_comp_rate
+		FROM size_sums;
+	</select>
+
+	<select id="selectAvgCompRate_v2" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT AVG(comp_rate) as avg_comp_rate
+		FROM (
+		    SELECT 
+		        resource_no, 
+		        resource_new_size_type1, 
+		        resource_new_size_type2,
+		        resource_new_size_type1 - resource_new_size_type2 as comp_size,
+		        CASE 
+		            WHEN resource_new_size_type2 = 0 THEN 
+		               0
+		            ELSE 
+		               (CAST((resource_new_size_type1 - resource_new_size_type2) AS FLOAT) / resource_new_size_type1)*100
+		        end as comp_rate
+		    FROM 
+		        om_cloud_optimizer_tbl ocot  
+		    WHERE 
+		        resource_new_size_type1 > 0
+		        <include refid="site_no"></include>
+		) as sub_query;
+	</select>
+
+	<select id="selectOptimizedAvgCompRate" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT AVG(comp_rate) as avg_comp_rate
+		FROM (
+		    SELECT 
+		        resource_no, 
+		        resource_new_size_type1, 
+		        resource_new_size_type2,
+		        resource_new_size_type1 - resource_new_size_type2 as comp_size,
+		        CASE 
+		            WHEN resource_new_size_type2 = 0 THEN 
+		               0
+		            ELSE 
+		               (CAST((resource_new_size_type1 - resource_new_size_type2) AS FLOAT) / resource_new_size_type1)*100
+		        end as comp_rate
+		    FROM 
+		        om_cloud_optimizer_tbl ocot  
+		    WHERE 
+		        resource_new_size_type1 > 0
+		        AND resource_new_size_type2 > 0
+		        AND resource_status = 1
+		        <include refid="site_no"></include>
+		) as sub_query;
+	</select>
+	
+	
+	<select id="selectNewResourceAll" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT resource_status, count(*) 
+		FROM om_cloud_optimizer_tbl ocot
+		WHERE rgstr_dt BETWEEN #{startDate_ts} AND #{endDate_ts}
+			AND resource_org_size > -1
+			<include refid="use_unstrfile"/>		
+			<include refid="site_no"></include>		
+		GROUP BY resource_status
+		UNION ALL
+		SELECT 99, count(*) 
+		FROM om_cloud_optimizer_tbl ocot
+		WHERE rgstr_dt BETWEEN #{startDate_ts} AND #{endDate_ts}
+			AND resource_org_size > -1
+			<include refid="use_unstrfile"/>
+			<include refid="site_no"></include>
+		UNION ALL
+		SELECT 98, count(*) 
+		FROM om_cloud_optimizer_tbl ocot
+		WHERE rgstr_dt BETWEEN #{startDate_ts} AND #{endDate_ts}
+			AND resource_org_size > -1
+			AND resource_status = -1
+			<include refid="use_unstrfile"/>
+			<include refid="site_no"></include>				
+	</select>
+		
+	<select id="selectResourceAllOptimizing" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT * FROM om_cloud_optimizer_tbl ocot 
+		WHERE (resource_status = 0 or resource_status = 11)
+			AND resource_type > 0	
+			AND resource_org_size > 0
+			<include refid="site_no"></include>
+			<include refid="use_unstrfile"></include>
+	</select>		
+	
+	<update id="cancelOptimizingResourceAll" parameterType="OptimizerVO">
+		UPDATE om_cloud_optimizer_tbl 
+		SET resource_status = -1
+		WHERE (resource_status = 0 OR resource_status = 11)
+			<include refid="site_no"></include>
+	</update>
+		
+	<select id="totalUnOptAllSize" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		 SELECT 
+    	SUM(resource_new_size_type1) AS total_unOpt_all_size
+		FROM 
+    	om_cloud_optimizer_tbl
+		WHERE 
+   		resource_status != 1 
+    	AND resource_type != 0 
+    	AND resource_new_size_type1 != -1
+	</select>
+	<select id="avgCallCount" parameterType="OptimizerVO" resultType="java.util.HashMap">
+	SELECT
+		l.resource_no,
+		AVG(call_count) AS avg_call_count_per_day
+		FROM
+		(
+		SELECT
+		 ocrlt.resource_no,
+		   sum(cnt) AS call_count
+		 FROM
+		   public.om_resource_call_cnt_month ocrlt
+		GROUP BY
+		   ocrlt.resource_no
+		) AS l
+		INNER JOIN
+		(
+		SELECT
+		resource_no,
+		DATE_PART('day', CURRENT_DATE - rgstr_dt) + 1 AS active_days
+		FROM
+		om_cloud_optimizer_tbl
+		GROUP BY
+		resource_no
+		) AS o
+		ON
+		l.resource_no = o.resource_no
+		GROUP BY
+		l.resource_no;
+	</select>
+		
+	<!-- ========================================================================================== [속도 최적화 현황 > 웹 콘텐츠 최적화 현황] -->
+	
+	<!-- 시간 개념이 있어서 log 테이블과 같이 봐야함 -->
+	
+	<sql id="latest_log">
+	WITH latest_log AS (
+    SELECT resource_no, 
+           rgstr_dt,
+           resource_log_content, 
+           row_number() OVER (PARTITION BY resource_no ORDER BY rgstr_dt DESC) AS rn
+    FROM om_cloud_optimizer_log_tbl
+    WHERE rgstr_dt <![CDATA[<=]]> 
+        <choose>
+            <when test="endDate_ts != null">
+                #{endDate_ts}
+            </when>
+            <otherwise>
+                NOW()
+            </otherwise>
+        </choose>
+	),
+	current_month AS (
+   	SELECT 
+        resource_no,
+        COUNT(*) AS current_month_count
+    FROM om_cloud_optimizer_log_tbl
+    WHERE date_trunc('month', rgstr_dt) = date_trunc('month', now())
+    GROUP BY resource_no
+	),
+	previous_month AS (
+    SELECT 
+        resource_no,
+        COUNT(*) AS previous_month_count
+    FROM om_cloud_optimizer_log_tbl
+    WHERE date_trunc('month', rgstr_dt) = date_trunc('month', now() - interval '1 month')
+    GROUP BY resource_no
+	),
+	resource_counts AS (
+    SELECT 
+        resource_no,
+        COUNT(*) AS count_records
+    FROM 
+        om_cloud_optimizer_log_tbl
+    GROUP BY 
+        resource_no
+    )
+	</sql>
+	
+	<select id="selectResourceAllWithLatestLogByParentId" parameterType="OptimizerVO" resultType="OptimizerVO">
+		<include refid="latest_log"></include>
+		SELECT 
+        	ocot.*,
+       	 ROW_NUMBER() OVER (ORDER BY ocot.resource_type, ocot.resource_name) AS row_no,
+       	 ocolt.rgstr_dt as log_rgstr_dt, 
+       	 ocolt.resource_log_content,
+       	 COALESCE(cm.current_month_count, 0) AS current_month_call_count,
+       	 COALESCE(pm.previous_month_count, 0) AS previous_month_call_count
+    	FROM om_cloud_optimizer_tbl ocot
+    	INNER JOIN latest_log ocolt 
+        	ON ocot.resource_no = ocolt.resource_no
+            AND ocolt.rn = 1
+            AND ocolt.resource_log_content = '1'
+    	LEFT JOIN current_month cm 
+        	ON ocot.resource_no = cm.resource_no
+    	LEFT JOIN previous_month pm 
+       	 ON ocot.resource_no = pm.resource_no
+    	WHERE 1 = 1
+			<choose>
+				<when test="search_range == 0"><!-- 전체 검색 -->
+					AND ocot.resource_type > 0
+				</when>
+				<otherwise>
+					AND ocot.resource_parent_no = #{resource_parent_no}
+				</otherwise>
+			</choose>		
+			<include refid="resource_search"></include>
+			<include refid="site_no"></include>
+		<include refid="sort"></include>	
+		<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>	
+	</select>	
+	
+
+	<select id="countResourceGroupByResourceParentNoWithLatestLog" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		<include refid="latest_log"></include>
+		SELECT resource_parent_no, 
+			SUM(CASE WHEN 1 = 1
+				<include refid="resource_search"></include>
+				AND resource_type > 0
+			THEN 1 ELSE 0 END) AS count,
+			COUNT(*) AS entire_count 
+		FROM om_cloud_optimizer_tbl ocot
+		INNER JOIN latest_log ocolt 
+		    ON ocot.resource_no = ocolt.resource_no
+			    AND ocolt.rn = 1
+			    AND ocolt.resource_log_content = '1'
+		WHERE 1 = 1
+			AND resource_org_size >= 0
+			AND resource_type > 0
+			<include refid="site_no"></include>
+		GROUP BY resource_parent_no 	
+	</select>	
+	
+	<!-- <select id="selectSumResourceSize" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		<include refid="latest_log"></include>
+		SELECT 
+		    sum(resource_new_size_type1) as type1_size,
+		    sum(resource_new_size_type2) as type2_size,
+		    (CAST((sum(resource_new_size_type1) - sum(resource_new_size_type2)) AS FLOAT) / sum(resource_new_size_type1)) * 100 as percentage
+		FROM om_cloud_optimizer_tbl ocot
+		INNER JOIN latest_log ocolt 
+		    ON ocot.resource_no = ocolt.resource_no
+		    AND ocolt.rn = 1
+		WHERE 1 = 1  
+			AND resource_type BETWEEN 1 AND 4
+			<include refid="site_no"></include>
+	</select> -->
+	<select id="selectSumResourceSize" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT 
+		    sum(resource_new_size_type1) as type1_size,
+		    sum(resource_new_size_type2) as type2_size,
+			ROUND(
+		        CAST(
+		            (
+		                CAST( ( sum(resource_new_size_type1) - sum(resource_new_size_type2) ) AS FLOAT) / NULLIF(sum(resource_new_size_type1), 0)
+		            ) * 100 AS NUMERIC
+		        ), 
+		        1
+			) as percentage
+		FROM om_cloud_optimizer_tbl ocot
+		WHERE 1 = 1  
+			AND resource_new_size_type1 > 0
+			AND resource_new_size_type2 > 0
+			AND resource_status = 1		
+			<include refid="site_no"></include>
+			<include refid="use_unstrfile"></include>
+	</select>	
+	<!-- ========================================================================================== [속도 최적화 현황 > 렌더링 시간 단축 현황] -->
+	
+	<select id="selectAvgTime" parameterType="OptimizerVO" resultType="java.util.HashMap">
+	    SELECT ROUND(AVG(org_time), 1) AS org_time, 
+	        ROUND(AVG(new_time), 1) AS new_time,
+		    ROUND((SUM(org_time) - SUM(new_time))::NUMERIC / SUM(org_time) * 100, 2) AS percentage
+	    FROM om_cloud_optimizer_tbl ocot
+	    WHERE org_time > 0
+	    	AND new_time > 0
+	        AND resource_type > 0
+	        AND resource_org_size > 0
+	        AND resource_status = 1
+	        <include refid="site_no"></include>
+	</select>
+	
+	<select id="selectAvgTimeByType" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT resource_type, 
+		    ROUND(AVG(org_time), 1) AS org_time, 
+		    ROUND(AVG(new_time), 1) AS new_time,
+		    ROUND((SUM(org_time) - SUM(new_time))::NUMERIC / SUM(org_time) * 100, 2) AS percentage
+		FROM om_cloud_optimizer_tbl ocot
+		WHERE org_time > 0
+		    AND new_time > 0
+		    AND resource_type > 0
+		    AND resource_org_size > 0
+		    <include refid="site_no"></include>
+		GROUP BY resource_type;
+	</select>
+	
+	<update id="updateResourceTimeReset" parameterType="OptimizerVO">
+		UPDATE om_cloud_optimizer_tbl 
+		SET org_time = -1, new_time = -1	
+		WHERE 1 = 1
+			<include refid="site_no"></include>
+			<if test="resource_no != null">
+				AND resource_no = #{resource_no}
+			</if>
+	</update>
+
+	<update id="updateResourceConditionByResourceNo" parameterType="OptimizerVO">
+		UPDATE om_cloud_optimizer_tbl 
+		SET resource_condition = #{resource_condition}
+		WHERE resource_no = #{resource_no}
+	</update>
+	
+	<select id="selectLatestCheckTimeAgent" parameterType="AlertVO" resultType="AlertVO">
+		SELECT * FROM om_alarm_log oal 
+		WHERE content LIKE '%랜더링 시간 측정이 완료%'
+			<include refid="site_no"></include>
+		ORDER BY rgtr_dt DESC
+		LIMIT 1;	
+	</select>
+	
+	<select id="selectResourceAllWithLatestLogByTopContent" parameterType="OptimizerVO" resultType="OptimizerVO">
+   SELECT ocot.*,
+		    ROW_NUMBER() OVER (ORDER BY ocot.resource_type, ocot.resource_name) AS row_no,
+          (SELECT SUM(ocrlt.cnt)
+    	   FROM public.om_resource_call_cnt_month ocrlt
+     	   WHERE ocrlt.resource_no = ocot.resource_no 
+     	   and yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+    	) AS current_month_call_count,
+    	(SELECT SUM(ocrlt.cnt)
+    	   FROM public.om_resource_call_cnt_month ocrlt
+     	   WHERE ocrlt.resource_no = ocot.resource_no 
+     	   and yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+    	) AS previous_month_call_count,
+    	 (SELECT SUM(ocrlt.opt_cnt)
+    	   FROM public.om_resource_call_cnt_month ocrlt
+     	   WHERE ocrlt.resource_no = ocot.resource_no 
+     	   and yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+    	) AS current_month_opt_count,
+    	(SELECT SUM(ocrlt.opt_cnt)
+    	   FROM public.om_resource_call_cnt_month ocrlt
+     	   WHERE ocrlt.resource_no = ocot.resource_no 
+     	   and yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+    	) AS previous_month_opt_count,
+    	(SELECT SUM(ocrlt.total_optimized_traffic)
+    	  FROM public.om_resource_call_cnt_month ocrlt
+     	  WHERE ocrlt.resource_no = ocot.resource_no 
+     	  and yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+    	) AS pre_total_optimized_traffic,
+    	(SELECT SUM(ocrlt.total_optimized_traffic)
+    	  FROM public.om_resource_call_cnt_month ocrlt
+     	  WHERE ocrlt.resource_no = ocot.resource_no 
+     	  and yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+    	  AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+    	) AS current_total_optimized_traffic
+    FROM 
+        om_cloud_optimizer_tbl ocot 
+    WHERE 
+        1 = 1
+        <choose>
+            <when test="search_range == 0"><!-- 전체 검색 -->
+                AND ocot.resource_type > 0
+            </when>
+            <otherwise>
+                AND ocot.resource_parent_no = #{resource_parent_no}
+            </otherwise>
+        </choose>
+        <include refid="resource_search"/>
+        <include refid="site_no"/>
+    <include refid="sort"/>
+    <if test="cnt_mode != 1">
+        LIMIT #{size} OFFSET #{offset}
+    </if>
+</select>
+<select id="getCurrentMonthCost" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT ocot.*,
+		    ROW_NUMBER() OVER (ORDER BY ocot.resource_type, ocot.resource_name) AS row_no,
+          (SELECT SUM(ocrlt.cnt)
+    	   FROM public.om_resource_call_cnt_month ocrlt
+     	   WHERE ocrlt.resource_no = ocot.resource_no 
+     	   and yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+    	) AS current_month_call_count,
+    	(SELECT SUM(ocrlt.cnt)
+    	   FROM public.om_resource_call_cnt_month ocrlt
+     	   WHERE ocrlt.resource_no = ocot.resource_no 
+     	   and yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+    	) AS previous_month_call_count,
+    	 (SELECT SUM(ocrlt.opt_cnt)
+    	   FROM public.om_resource_call_cnt_month ocrlt
+     	   WHERE ocrlt.resource_no = ocot.resource_no 
+     	   and yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+    	) AS current_month_opt_count,
+    	(SELECT SUM(ocrlt.opt_cnt)
+    	   FROM public.om_resource_call_cnt_month ocrlt
+     	   WHERE ocrlt.resource_no = ocot.resource_no 
+     	   and yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+    	) AS previous_month_opt_count,
+    	(SELECT SUM(ocrlt.total_optimized_traffic)
+    	  FROM public.om_resource_call_cnt_month ocrlt
+     	  WHERE ocrlt.resource_no = ocot.resource_no 
+     	  and yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+    	   AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+    	) AS pre_total_optimized_traffic,
+    	(SELECT SUM(ocrlt.total_optimized_traffic)
+    	  FROM public.om_resource_call_cnt_month ocrlt
+     	  WHERE ocrlt.resource_no = ocot.resource_no 
+     	  and yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+    	  AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+    	) AS current_total_optimized_traffic
+    FROM 
+        om_cloud_optimizer_tbl ocot 
+    WHERE 
+        1 = 1
+        AND resource_type > 0
+        <include refid="site_no"/>
+	</select>
+	<select id="getCurrentDayCost" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT 
+  		ocot.cloud_no,
+  		ocot.resource_new_size_type1,
+ 		 ocot.resource_no,
+ 		 ocrlt.cnt AS current_day_count,
+ 		 ocrlt.opt_cnt AS current_opt_count,
+ 		 (SELECT SUM(ocrlt_inner.total_optimized_traffic)
+ 		  FROM public.om_resource_call_cnt_month ocrlt_inner
+ 		  WHERE ocrlt_inner.resource_no = ocot.resource_no 
+ 		 ) AS total_optimized_traffic
+		FROM 
+ 		 om_cloud_optimizer_tbl ocot
+		LEFT JOIN 
+ 		 public.om_resource_call_cnt_month ocrlt
+		ON 
+ 		 ocot.resource_no = ocrlt.resource_no 
+  		AND ocrlt.yyyy = EXTRACT(YEAR FROM NOW())
+ 		 AND ocrlt.mm = EXTRACT(MONTH FROM NOW())
+ 		 AND ocrlt.dd = EXTRACT(DAY FROM NOW())
+		WHERE 
+ 		1 = 1
+ 		AND resource_type > 0
+        <include refid="site_no"/>
+	</select>
+	
+	<select id="selectResourceTop10" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT 
+        ocot.*, 
+        (SELECT SUM(ocrlt.opt_cnt)
+         FROM public.om_resource_call_cnt_month ocrlt
+         WHERE ocrlt.resource_no = ocot.resource_no 
+           AND ocrlt.yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+           AND ocrlt.mm = EXTRACT(MONTH FROM CURRENT_DATE)
+        ) AS current_month_opt_count,
+        (SELECT SUM(ocrlt.cnt)
+         FROM public.om_resource_call_cnt_month ocrlt
+         WHERE ocrlt.resource_no = ocot.resource_no 
+           AND ocrlt.yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+           AND ocrlt.mm = EXTRACT(MONTH FROM CURRENT_DATE)
+        ) AS current_month_call_count
+    FROM om_cloud_optimizer_tbl ocot
+    WHERE resource_status = #{resource_status}
+    <include refid="use_unstrfile"/>
+	<include refid="site_no"/>
+    AND resource_org_size > 0
+    ORDER BY resource_type1_size DESC
+    LIMIT 10
+	</select>
+	
+	<select id="selectSizeGroupByType" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT resource_type, 
+		    SUM(resource_new_size_type1) AS size1, 
+		    SUM(resource_new_size_type2) AS size2,
+			ROUND(
+			    (SUM(resource_new_size_type1) - SUM(resource_new_size_type2)) 
+			    / NULLIF(SUM(resource_new_size_type1), 0)::NUMERIC * 100, 1
+			) AS percentage
+		FROM om_cloud_optimizer_tbl ocot
+		WHERE 1 = 1
+			AND resource_new_size_type1 > 0
+			AND resource_new_size_type2 > 0
+			<include refid="site_no"/>	
+		GROUP BY resource_type 
+		ORDER BY  resource_type;	
+	</select>
+	
+	<select id="selectUserCount" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT COUNT(DISTINCT user_id) FROM om_cloud_resource_log_tbl ocrlt
+		WHERE 1 = 1
+			AND ocrlt.rgstr_dt BETWEEN NOW() - INTERVAL '1 second' AND NOW()
+			<include refid="site_no"/>
+	</select>
+
+
+
+
+	<select id="getPageRendering" parameterType="ReportVO" resultType="ReportVO">	
+		SELECT 
+    ocort.page_no, 
+     ROUND(SUM(ocot.org_time), 1) AS org_time,
+    ROUND(
+        SUM(
+            CASE 
+                WHEN ocot.new_time IS NULL OR ocot.new_time = 0 THEN ocot.org_time 
+                ELSE ocot.new_time 
+            END
+        ), 
+    1) AS new_time,
+    ROUND(
+        CASE
+            WHEN SUM(ocot.org_time) = 0 THEN NULL
+            ELSE 
+                (ROUND(SUM(ocot.org_time), 1) - ROUND(
+                    SUM(
+                        CASE 
+                            WHEN ocot.new_time IS NULL OR ocot.new_time = 0 THEN ocot.org_time 
+                            ELSE ocot.new_time 
+                        END
+                    ), 
+                1)) / ROUND(SUM(ocot.org_time), 1) * 100
+        END, 
+    1) AS percent,
+    (SELECT site_address FROM om_cloud_site_tbl ocst WHERE 1=1 
+    <if test="site_list != null and site_list.size() > 0">
+			        AND site_no IN
+			        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+			            CAST(#{item} AS INTEGER)
+			        </foreach>
+		    	</if>) AS site_address,
+    (SELECT page_url FROM om_cloud_optimizer_page_tbl WHERE page_no = ocort.page_no) AS page_url,
+     (SELECT page_path FROM om_cloud_optimizer_page_tbl WHERE page_no = ocort.page_no) AS page_path
+FROM 
+    om_cloud_optimizer_tbl ocot 
+    JOIN om_cloud_optimizer_rel_tbl ocort ON ocot.resource_no = ocort.resource_no 
+WHERE 
+    1=1 and page_no = #{page_no}    
+	        <if test="site_list != null and site_list.size() > 0">
+		        AND ocot.site_no IN
+		        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+		            CAST(#{item} AS INTEGER)
+		        </foreach>
+	    	</if>
+		    AND ocot.resource_type > 0  
+		  <if test='resource_type != 0 and resource_type != 99 and resource_type !=90'>
+				and resource_type = #{resource_type}
+		 </if>	
+GROUP BY 
+    ocort.page_no;    
+    </select>
+    
+    <select id="selectResourceTypeCountByPage" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT COUNT(*), 
+			SUM(ocot.resource_new_size_type1) AS size1, 
+			CASE 
+				WHEN SUM(ocot.resource_new_size_type2) = 0 THEN SUM(ocot.resource_new_size_type1) 
+				ELSE SUM(ocot.resource_new_size_type2) 
+			END AS size2,
+			CASE 
+				WHEN SUM(ocot.resource_new_size_type2) = 0 THEN 0
+				ELSE ROUND((SUM(ocot.resource_new_size_type1) - SUM(ocot.resource_new_size_type2)) / SUM(ocot.resource_new_size_type1)::NUMERIC * 100, 2)
+			END AS percentage,	    
+			ocot.resource_type, 
+			ocot.resource_status
+		FROM om_cloud_optimizer_rel_tbl ocort
+		LEFT JOIN om_cloud_optimizer_tbl ocot ON ocort.resource_no = ocot.resource_no 
+		WHERE page_no = #{page_no} 
+			AND ocot.resource_type BETWEEN 1 AND 4
+			AND ocot.resource_org_size > 0
+		GROUP BY ocot.resource_type, ocot.resource_status 
+		ORDER BY ocot.resource_type     
+    </select>
+    
+    <select id="selectResourceCountByPage" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT COUNT(*), ocort.page_no 
+		FROM om_cloud_optimizer_rel_tbl ocort
+		LEFT JOIN om_cloud_optimizer_tbl ocot ON ocort.resource_no = ocot.resource_no 
+		WHERE ocot.resource_type BETWEEN 1 AND 4 
+			and ocot.resource_org_size > 0
+		GROUP BY ocort.page_no    
+		ORDER BY ocort.page_no  
+    </select>
+    
+    <update id="updateResourceStatusByPageNo" parameterType="OptimizerVO">
+		<!-- UPDATE om_cloud_optimizer_rel_tbl ocort
+		LEFT JOIN om_cloud_optimizer_tbl ocot ON ocort.resource_no = ocot.resource_no
+		SET ocot.resource_status = ${resource_status}
+		WHERE ocort.page_no = ${page_no};    -->
+		UPDATE om_cloud_optimizer_tbl
+		SET resource_status = ${resource_status}, algorithm_sn = CAST(NULLIF(resource_type1, '') AS INTEGER)
+		WHERE resource_no IN (
+		  SELECT resource_no
+		  FROM om_cloud_optimizer_rel_tbl
+		  WHERE page_no = ${page_no}
+		);		
+    </update>
+   
+	<select id="selectResourceAllOptimizingByPage" parameterType="OptimizerVO" resultType="OptimizerVO">
+		SELECT * FROM om_cloud_optimizer_rel_tbl ocort 
+		LEFT JOIN om_cloud_optimizer_tbl ocot ON ocort.resource_no = ocot.resource_no 
+		WHERE ocort.page_no = #{page_no}
+			AND (resource_status = 0 OR resource_status = 11)
+			AND resource_type > 0	
+			AND resource_org_size > 0
+			<include refid="site_no"></include>
+			<include refid="use_unstrfile"></include>
+	</select>	   
+   <select id="selectResourceAllWithLatestDayLogByTopContent" parameterType="OptimizerVO" resultType="OptimizerVO">
+   SELECT ocot.*,
+         ROW_NUMBER() OVER (ORDER BY ocot.resource_type, ocot.resource_name) AS row_no,
+         (SELECT SUM(ocrlt.cnt)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS current_month_call_count,
+         (SELECT SUM(ocrlt.cnt)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS previous_month_call_count,
+         (SELECT SUM(ocrlt.opt_cnt)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS current_month_opt_count,
+         (SELECT SUM(ocrlt.opt_cnt)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS previous_month_opt_count,
+         (SELECT SUM(ocrlt.total_optimized_traffic)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS pre_total_optimized_traffic,
+         (SELECT SUM(ocrlt.total_optimized_traffic)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS current_total_optimized_traffic
+  FROM 
+      om_cloud_optimizer_tbl ocot 
+    WHERE 
+        1 = 1
+        <choose>
+            <when test="search_range == 0"><!-- 전체 검색 -->
+                AND ocot.resource_type > 0
+            </when>
+            <otherwise>
+                AND ocot.resource_parent_no = #{resource_parent_no}
+            </otherwise>
+        </choose>
+        <include refid="resource_search"/>
+        <include refid="site_no"/>
+    <include refid="sort"/>
+    <if test="cnt_mode != 1">
+        LIMIT #{size} OFFSET #{offset}
+    </if>
+</select>
+
+ <select id="getDayLogByTopContent" parameterType="OptimizerVO" resultType="OptimizerVO">
+   SELECT ocot.*,
+         ROW_NUMBER() OVER (ORDER BY ocot.resource_type, ocot.resource_name) AS row_no,
+         (SELECT SUM(ocrlt.cnt)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS current_month_call_count,
+         (SELECT SUM(ocrlt.cnt)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS previous_month_call_count,
+         (SELECT SUM(ocrlt.opt_cnt)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS current_month_opt_count,
+         (SELECT SUM(ocrlt.opt_cnt)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS previous_month_opt_count,
+         (SELECT SUM(ocrlt.total_optimized_traffic)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month') 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month')
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS pre_total_optimized_traffic,
+         (SELECT SUM(ocrlt.total_optimized_traffic)
+          FROM public.om_resource_call_cnt_month ocrlt
+          WHERE ocrlt.resource_no = ocot.resource_no 
+            AND yyyy = EXTRACT(YEAR FROM CURRENT_DATE) 
+            AND mm = EXTRACT(MONTH FROM CURRENT_DATE)
+            AND dd <![CDATA[<=]]> EXTRACT(DAY FROM CURRENT_DATE)
+         ) AS current_total_optimized_traffic
+  FROM 
+      om_cloud_optimizer_tbl ocot 
+    WHERE 
+        1 = 1      
+                AND ocot.resource_type > 0
+        <include refid="site_no"/>
+</select>
+
+	<select id="selectResourceStatusSummaryByPage" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT ocot.resource_status, count(*)
+		FROM om_cloud_optimizer_rel_tbl ocort  
+		LEFT JOIN om_cloud_optimizer_tbl ocot ON ocort.resource_no = ocot.resource_no 
+		WHERE  ocort.page_no = #{page_no}
+			AND ocot.resource_org_size > 0
+			AND ocot.resource_type > 0
+		GROUP  BY ocot.resource_status 
+	</select>
+</mapper> 

@@ -1,0 +1,1214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.CostMapper">
+	
+	
+	<select id ="selectAvgComp" parameterType="CostVO" resultType="CostVO">
+			SELECT
+			    resource_type,
+			    AVG((resource_new_size_type2) * 100.0 / resource_org_size) AS avg_reduction_percentage
+			FROM
+			    om_cloud_optimizer_tbl
+			WHERE
+			    resource_condition > 0
+			    AND resource_type > 0
+			    AND resource_new_size_type2 > 0
+			   	<if test="site_list != null and site_list.size() > 0">
+			        AND site_no IN
+			        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+			            CAST(#{item} AS INTEGER)
+			        </foreach>
+		    	</if>
+			GROUP BY
+			    resource_type
+			ORDER BY
+			    resource_type;
+	</select>
+	<select id ="selectContentAll" parameterType="CostVO" resultType="CostVO">
+		  select resource_type,
+		    COUNT(*) FILTER (WHERE resource_type > 0 AND ocot.resource_org_size >= 0 AND EXISTS (
+		        SELECT 1
+		        FROM om_cloud_resource_log_tbl ocrlt
+		        WHERE ocot.resource_no = ocrlt.resource_no
+		         <if test='rgstr_yyyy != 0'>
+		     	  AND CAST(rgstr_yyyy AS INTEGER) = #{rgstr_yyyy} ::INTEGER
+					</if>
+					<if test='rgstr_mm != 0'>
+					AND CAST(rgstr_mm AS INTEGER)  = #{rgstr_mm} ::INTEGER
+				</if>
+		    )) AS in_use_count,
+		    COUNT(*) FILTER (WHERE resource_type > 0 AND ocot.resource_org_size >= 0 AND NOT EXISTS (
+		        SELECT 1
+		        FROM om_cloud_resource_log_tbl ocrlt
+		        WHERE ocot.resource_no = ocrlt.resource_no
+		          <if test='rgstr_yyyy != 0'>
+		     	  AND CAST(rgstr_yyyy AS INTEGER) = #{rgstr_yyyy} ::INTEGER
+					</if>
+					<if test='rgstr_mm != 0'>
+					AND CAST(rgstr_mm AS INTEGER)  = #{rgstr_mm} ::INTEGER
+				</if>
+		    )) AS not_in_use_count,
+		    COUNT(*) FILTER (WHERE resource_type > 0 AND  0>ocot.resource_org_size ) AS negative_size_count
+		FROM om_cloud_optimizer_tbl ocot where resource_type > 0
+		
+		
+		
+	 <if test="site_list != null and site_list.size() > 0">
+	        AND ocot.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+		 group by resource_type
+	</select>
+	
+	<select id="selectContentTable_use" parameterType="CostVO" resultType="CostVO">
+    	select ROW_NUMBER() over (order by ocot.resource_no) as row,*  from om_cloud_optimizer_tbl ocot 
+ 		where resource_type >0 
+ 		
+ 		<if test="searchKeyword != null and searchKeyword.equals('use')">
+		 	and ocot.resource_org_size >= 0 
+ 		and EXISTS(select 1 from om_cloud_resource_log_tbl ocrlt where ocot.resource_no = ocrlt.resource_no
+ 		 <if test='rgstr_yyyy != 0'>
+		     	  AND CAST(rgstr_yyyy AS INTEGER) = #{rgstr_yyyy} ::INTEGER
+					</if>
+					<if test='rgstr_mm != 0'>
+					AND CAST(rgstr_mm AS INTEGER)  = #{rgstr_mm} ::INTEGER
+				</if>)
+		 	</if>
+ 		<if test="searchKeyword != null and searchKeyword.equals('dontuse')">
+		 	and ocot.resource_org_size >= 0 
+ 		and not EXISTS(select 1 from om_cloud_resource_log_tbl ocrlt where ocot.resource_no = ocrlt.resource_no
+ 		 <if test='rgstr_yyyy != 0'>
+		     	  AND CAST(rgstr_yyyy AS INTEGER) = #{rgstr_yyyy} ::INTEGER
+					</if>
+					<if test='rgstr_mm != 0'>
+					AND CAST(rgstr_mm AS INTEGER)  = #{rgstr_mm} ::INTEGER
+				</if>)
+		 	</if>
+ 		
+ 		<if test="searchKeyword != null and searchKeyword.equals('gone')">
+		 	and  0>ocot.resource_org_size
+<!-- 		 	 <if test='rgstr_yyyy != 0'> -->
+<!-- 		     	  AND CAST(rgstr_yyyy AS INTEGER) = #{rgstr_yyyy} ::INTEGER -->
+<!-- 					</if> -->
+<!-- 					<if test='rgstr_mm != 0'> -->
+<!-- 					AND CAST(rgstr_mm AS INTEGER)  = #{rgstr_mm} ::INTEGER -->
+<!-- 				</if> -->
+		 </if>
+ 		 <if test="site_list != null and site_list.size() > 0">
+	        AND ocot.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+ 		
+ 		
+ 		
+ 		
+		<if test='sort != null and sort.size()!=0'>
+			<foreach collection="sort" item="sortItem">
+				<choose>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_type")'>
+						ORDER BY ocot.resource_type <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_name")'>
+						ORDER BY ocot.resource_name <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_status")'>
+						ORDER BY ocot.resource_status <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_org_size")'>
+						ORDER BY ocot.resource_org_size  <![CDATA[${sortItem.dir}]]> 
+					</when>																																			
+					<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type2")'>
+						ORDER BY ocot.resource_new_size_type2 <![CDATA[${sortItem.dir}]]> 
+					</when>																																																		
+				</choose>
+			</foreach>
+		</if>
+		<if test='sort == null'>
+			order by resource_no
+		</if>		
+ 		
+   		 <if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>
+	</select>
+	
+	<select id="selectContentTable_dontuse" parameterType="CostVO" resultType="CostVO">
+    	select ROW_NUMBER() over (order by ocot.resource_no) as row,*  from om_cloud_optimizer_tbl ocot 
+ 		where resource_type >0 and ocot.resource_org_size >= 0 
+ 		and not EXISTS(select 1 from om_cloud_resource_log_tbl ocrlt where ocot.resource_no = ocrlt.resource_no)
+ 	<if test="site_list != null and site_list.size() > 0">
+	        AND ocot.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+ 		
+ 		order by resource_no
+   		 <if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>
+	</select>
+	
+	<select id="selectContentTable_gone" parameterType="CostVO" resultType="CostVO">
+    select ROW_NUMBER() over (order by ocot.resource_no) as row,*  from om_cloud_optimizer_tbl ocot 
+ 	where resource_type >0 
+ 	and  0>ocot.resource_org_size
+ 	<if test="site_list != null and site_list.size() > 0">
+	        AND ocot.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+ 		
+ 		order by resource_no
+   		 <if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>
+	</select>
+	
+	
+		
+	<select id="selectUseOrNot" parameterType="CostVO" resultType="CostVO">
+   SELECT COUNT(*) FILTER (WHERE resource_type > 0 AND ocot.resource_org_size >= 0 AND EXISTS (
+        SELECT 1
+        FROM om_cloud_resource_log_tbl ocrlt
+        WHERE ocot.resource_no = ocrlt.resource_no
+        <if test='rgstr_yyyy != 0'>
+		     	  AND CAST(rgstr_yyyy AS INTEGER) = #{rgstr_yyyy} ::INTEGER
+					</if>
+					<if test='rgstr_mm != 0'>
+					AND CAST(rgstr_mm AS INTEGER)  = #{rgstr_mm} ::INTEGER
+				</if>
+    )) AS in_use_count,
+    COUNT(*) FILTER (WHERE resource_type > 0 AND ocot.resource_org_size >= 0 AND NOT EXISTS (
+        SELECT 1
+        FROM om_cloud_resource_log_tbl ocrlt
+        WHERE ocot.resource_no = ocrlt.resource_no
+        <if test='rgstr_yyyy != 0'>
+		     	  AND CAST(rgstr_yyyy AS INTEGER) = #{rgstr_yyyy} ::INTEGER
+					</if>
+					<if test='rgstr_mm != 0'>
+					AND CAST(rgstr_mm AS INTEGER)  = #{rgstr_mm} ::INTEGER
+				</if>
+    )) AS not_in_use_count,
+    COUNT(*) FILTER (WHERE resource_type > 0 AND   0> ocot.resource_org_size) AS negative_size_count
+	FROM om_cloud_optimizer_tbl ocot
+	where 1=1
+	 <if test="site_list != null and site_list.size() > 0">
+	        AND ocot.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	
+	</select>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	<select id="selectAllResourceByDate" parameterType="CostVO" resultType="CostVO">
+	
+		select 
+		resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		cloud_no,
+		resource_type,
+		rgstr_date,
+		count(*) as resource_call_cnt
+		from
+		(
+		select 
+		 CASE WHEN a.rgstr_dt >= b.updt_dt THEN 1
+		    ELSE -1
+		  END AS resource_status,
+		  resource_org_size,
+		  resource_new_size_type2,
+		  resource_name,
+		  b.cloud_no,
+		  resource_type,
+		  a.rgstr_date  
+		from public.om_cloud_resource_log_tbl a
+		join public.om_cloud_optimizer_tbl b on a.resource_no = b.resource_no
+		where b.resource_org_size >= 0 and resource_type != 0
+		<if test='resource_type != 0'>
+			and resource_type = #{resource_type}
+		</if>	
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='startDate != 0'>
+				and  a.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= a.rgstr_date
+				</if>
+		
+		<if test='rgstr_yyyy != 0'>
+				and a.rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+		<if test='rgstr_mm != 0'>
+				and a.rgstr_mm = #{rgstr_mm}
+		</if>
+		) a
+		where 1=1 and
+		resource_status =1 
+		group by resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		resource_type,
+		cloud_no,
+		rgstr_date
+		order by resource_type;
+	</select>
+	
+	<select id="selectCostByYear" parameterType="CostVO" resultType="CostVO">
+		
+		select EXTRACT(YEAR FROM ocrlt.rgstr_dt) AS year,  
+		  sum(otbl.resource_org_size) as resource_org_size,
+		  SUM(
+		    CASE
+		      WHEN otbl.resource_new_size_type1 != otbl.resource_new_size_type2 THEN otbl.resource_new_size_type2
+		      ELSE 0
+		    END
+  		) AS resource_new_size_type2
+		FROM
+		  om_cloud_resource_log_tbl ocrlt
+		INNER JOIN
+		  om_cloud_optimizer_tbl otbl ON ocrlt.resource_no = otbl.resource_no
+		where
+		  EXTRACT(YEAR FROM ocrlt.rgstr_dt) = #{year} and	
+		  otbl.resource_org_size >= 0
+		  <if test='cloud_no != 0'>
+				and ocrlt.cloud_no = #{cloud_no}
+		</if>
+		GROUP BY EXTRACT(YEAR FROM ocrlt.rgstr_dt);
+		
+	</select>
+	
+	<select id="selectCostByMonth" parameterType="CostVO" resultType="CostVO">
+<!-- 		    select * from ( -->
+<!--         SELECT -->
+<!--         ocot.resource_no, -->
+<!--         ocot.resource_type, -->
+<!--         ocot.resource_name, -->
+<!--         ocot.resource_org_size, -->
+<!--         ocot.resource_new_size_type2, -->
+<!--         ocot.resource_status, -->
+<!--         ocot.cloud_no, -->
+<!--         (SELECT SUM(ocrlt.cnt) -->
+<!--     	  FROM public.om_resource_call_cnt_month ocrlt -->
+<!--      	  WHERE ocrlt.resource_no = ocot.resource_no -->
+<!--      	  ) AS resource_call_cnt, -->
+<!--      	  (SELECT yyyy -->
+<!--     	  FROM public.om_resource_call_cnt_month ocrlt -->
+<!--      	  WHERE ocrlt.resource_no = ocot.resource_no  -->
+<!--      	  ) as yyyy -->
+<!--         ,(SELECT mm -->
+<!--     	  FROM public.om_resource_call_cnt_month ocrlt -->
+<!--      	  WHERE ocrlt.resource_no = ocot.resource_no  -->
+<!--      	  ) as mm,(SELECT dd -->
+<!--     	  FROM public.om_resource_call_cnt_month ocrlt -->
+<!--      	  WHERE ocrlt.resource_no = ocot.resource_no  -->
+<!--      	  ) as dd -->
+<!--     FROM -->
+<!--         om_cloud_optimizer_tbl ocot -->
+<!--     WHERE -->
+<!--         1 = 1 -->
+<!--         AND resource_type > 0 -->
+<!--         and resource_org_size >-1 -->
+<!--    )    main -->
+<!--    where (mm is not null and dd is not null and resource_call_cnt >0) -->
+<!--    and resource_status >-1 and resource_new_size_type2 >0 -->
+<!-- 		 <if test='rgstr_yyyy != 0'> -->
+<!--      	  AND CAST(yyyy AS INTEGER) = #{rgstr_yyyy} ::INTEGER -->
+<!-- 			</if> -->
+<!-- 			<if test='rgstr_mm != 0'> -->
+<!-- 			AND CAST(mm AS INTEGER)  = #{rgstr_mm} ::INTEGER -->
+<!-- 			</if> -->
+		    
+		    
+		    select
+	        ocot.resource_no,
+	        ocot.resource_type,
+	        ocot.resource_name,
+	        ocot.resource_org_size,
+	        ocot.resource_new_size_type2,
+	        ocot.resource_status,
+	        ocot.cloud_no,
+	        main.resource_call_cnt,
+	        main.yyyy,
+	        main.mm,
+	        main.dd
+			FROM (
+			    SELECT ocrlt.resource_no, ocrlt.yyyy, ocrlt.mm, ocrlt.dd, SUM(ocrlt.cnt) as resource_call_cnt
+			    FROM public.om_resource_call_cnt_month ocrlt
+			    GROUP BY yyyy, mm, dd, resource_no
+			) main LEFT JOIN om_cloud_optimizer_tbl ocot ON main.resource_no = ocot.resource_no
+				 WHERE
+ 			(main.mm is not null and main.dd is not null and main.resource_call_cnt >0)  and
+				 ocot.resource_status >-1 and ocot.resource_new_size_type2 >0
+	        AND ocot.resource_type > 0
+	        and ocot.resource_org_size >-1
+		  	 <if test='rgstr_yyyy != 0'>
+     	  AND CAST(yyyy AS INTEGER) = #{rgstr_yyyy} ::INTEGER
+			</if>
+			<if test='rgstr_mm != 0'>
+			AND CAST(mm AS INTEGER)  = #{rgstr_mm} ::INTEGER
+			</if>
+			<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	</select>
+	
+	<select id="selectCostByDay" parameterType="CostVO" resultType="CostVO">
+		select 
+		resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		cloud_no,
+		resource_type,
+		count(*) as resource_call_cnt
+		from
+		(
+		select 
+		 CASE WHEN a.rgstr_dt >= b.updt_dt THEN 1
+		    ELSE -1
+		  END AS resource_status,
+		  resource_org_size,
+		  resource_new_size_type2,
+		  resource_name,
+		  b.cloud_no,
+		  resource_type  
+		from public.om_cloud_resource_log_tbl a
+		join public.om_cloud_optimizer_tbl b on a.resource_no = b.resource_no
+		where b.resource_org_size >= 0 and resource_type != 0
+		<if test='resource_type != 0'>
+			and resource_type = #{resource_type}
+		</if>	
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='startDate != 0'>
+				and  a.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= a.rgstr_date
+				</if>
+		
+		<if test='rgstr_yyyy != 0'>
+				and a.rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+		<if test='rgstr_mm != 0'>
+				and a.rgstr_mm = #{rgstr_mm}
+		</if>
+		<if test='rgstr_dd != 0'>
+				and a.rgstr_dd = #{rgstr_dd}
+		</if>
+		) a
+		group by resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		resource_type,
+		cloud_no;
+	</select>
+	
+	<select id="selectCloud_payment" parameterType="CostVO" resultType="CostVO">
+		select cloud_no,cloud_payment  from om_cloud_tbl where lgn_sn = #{lgn_sn}
+	</select>
+	
+	<select id="selectPerDayChart" parameterType="CostVO" resultType="CostVO">		
+		select 
+		weekday,
+		cloud_no,
+		a.resource_no,
+		resource_org_size,
+		resource_new_size_type2,
+		resource_status,
+		count(*) as resource_call_cnt
+		from
+		(
+		select 
+		 CASE WHEN a.rgstr_dt >= b.updt_dt THEN 1
+		    ELSE -1
+		  END AS resource_status,
+		  EXTRACT(ISODOW FROM a.rgstr_dt) AS weekday,
+		  a.cloud_no,
+		  a.resource_no,
+		  resource_org_size,
+		  resource_new_size_type2
+		from public.om_cloud_resource_log_tbl a
+		join public.om_cloud_optimizer_tbl b on a.resource_no = b.resource_no
+		where b.resource_org_size >= 0 and resource_type != 0
+		<if test='resource_type != 0'>
+			and resource_type = #{resource_type}
+		</if>	
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='startDate != 0'>
+				and  a.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= a.rgstr_date
+				</if>
+		
+		<if test='rgstr_yyyy != 0'>
+				and a.rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+			<if test='rgstr_mm != 0'>
+				and a.rgstr_mm = #{rgstr_mm}
+			</if>
+		) a
+		group by weekday,cloud_no,a.resource_no,resource_org_size,
+		resource_new_size_type2, resource_status
+		order by weekday
+	</select>
+	
+	
+	<select id="selectContentsCnt" parameterType="CostVO" resultType="CostVO">
+		
+select * from om_cloud_optimizer_tbl ocot
+ where resource_type != 0 and resource_org_size >=0
+<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+		
+	</select>
+	
+	<select id="selectContentsSize" parameterType="CostVO" resultType="CostVO">
+		select
+  		resource_name,
+		a.resource_no,
+		resource_org_size,
+		resource_new_size_type2,
+		resource_status,
+		count(*) as resource_call_cnt
+		,cloud_no
+		from
+		(
+		select 
+		 CASE WHEN a.rgstr_dt >= b.updt_dt THEN 1
+		    ELSE 0
+		  END AS resource_status,
+		  a.resource_no,
+		  b.resource_name,
+		  resource_org_size,
+		  resource_new_size_type2,
+		  b.cloud_no, 
+		  c.page_no
+		from public.om_cloud_resource_log_tbl a
+		join public.om_cloud_optimizer_tbl b on a.resource_no = b.resource_no
+		join om_cloud_optimizer_rel_tbl c on b.resource_no = c.resource_no 
+		where b.resource_type  !=0 and b.resource_org_size >0 
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+		<if test='rgstr_yyyy != 0'>
+				and rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+		<if test='rgstr_mm != 0'>
+				and rgstr_mm = #{rgstr_mm}
+		</if>
+		) a
+		where a.resource_no != 0 and page_no != 0
+		group by resource_name,a.resource_no,resource_org_size,resource_new_size_type2,resource_status,cloud_no;
+		
+	</select>
+	
+	<select id="selectAllResource" parameterType="CostVO" resultType="CostVO">
+	
+		select 
+		resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		cloud_no,
+		resource_type,
+		count(*) as resource_call_cnt
+		from
+		(
+		select 
+		 CASE WHEN a.rgstr_dt >= b.updt_dt THEN 1
+		    ELSE -1
+		  END AS resource_status,
+		  resource_org_size,
+		  resource_new_size_type2,
+		  resource_name,
+		  b.cloud_no,
+		  resource_type  
+		from public.om_cloud_resource_log_tbl a
+		join public.om_cloud_optimizer_tbl b on a.resource_no = b.resource_no
+		where b.resource_org_size >= 0 and resource_type != 0
+		<if test='resource_type != 0'>
+			and resource_type = #{resource_type}
+		</if>	
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='startDate != 0'>
+				and  a.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= a.rgstr_date
+				</if>
+		
+		<if test='rgstr_yyyy != 0'>
+				and a.rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+		<if test='rgstr_mm != 0'>
+				and a.rgstr_mm = #{rgstr_mm}
+		</if>
+		) a
+		where 1=1 
+		<if test='resource_status != 0'>
+			and resource_status = #{resource_status}
+		</if>	
+		group by resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		resource_type,
+		cloud_no
+		order by resource_type;
+	</select>
+	<select id="selectAllResourceByPage" parameterType="CostVO" resultType="CostVO">
+		select 
+		resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		cloud_no,
+		resource_type,
+		page_no,
+		count(*) as resource_call_cnt
+		from
+		(
+		select 
+		 CASE WHEN a.rgstr_dt >= b.updt_dt THEN 1
+		    ELSE -1
+		  END AS resource_status,
+		  resource_org_size,
+		  resource_new_size_type2,
+		  resource_name,
+		  b.cloud_no,
+		  a.page_no,
+		  resource_type  
+		from public.om_cloud_resource_log_tbl a
+		join public.om_cloud_optimizer_tbl b on a.resource_no = b.resource_no
+		where b.resource_org_size >= 0 and resource_type != 0
+		<if test='resource_type != 0'>
+			and resource_type = #{resource_type}
+		</if>	
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='startDate != 0'>
+				and  a.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= a.rgstr_date
+				</if>
+		
+		<if test='rgstr_yyyy != 0'>
+				and a.rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+		<if test='rgstr_mm != 0'>
+				and a.rgstr_mm = #{rgstr_mm}
+		</if>
+		) a
+		where 1=1 
+		<if test='resource_status != 0'>
+			and resource_status = #{resource_status}
+		</if>
+		<if test='page_no != 0'>
+			and page_no = #{page_no}
+		</if>		
+		group by resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		resource_type,
+		cloud_no,
+		page_no
+		order by resource_type;
+	</select>
+	
+	<select id="selectAllResourceByStatus" parameterType="CostVO" resultType="CostVO">
+		select 
+		resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		cloud_no,
+		resource_type,
+		count(*) as resource_call_cnt
+		from
+		(
+		select 
+		 resource_status,
+		  resource_org_size,
+		  resource_new_size_type2,
+		  resource_name,
+		  b.cloud_no,
+		  resource_type  
+		from public.om_cloud_resource_log_tbl a
+		join public.om_cloud_optimizer_tbl b on a.resource_no = b.resource_no
+		where b.resource_org_size >= 0 and resource_type != 0
+		<if test='resource_type_arr != null and resource_type_arr.size() >0'>
+			and resource_type in 
+			<foreach item="item" collection="resource_type_arr" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+		</if>	
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='startDate != 0'>
+				and  a.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= a.rgstr_date
+				</if>
+		
+		<if test='rgstr_yyyy != 0'>
+				and a.rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+		<if test='rgstr_mm != 0'>
+				and a.rgstr_mm = #{rgstr_mm}
+		</if>
+		) a
+		where 1=1 
+		<if test='resource_status != 0'>
+			and 1 > resource_status  
+		</if>	
+		group by resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		resource_type,
+		cloud_no
+		order by resource_type
+		<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>
+	</select>
+	<select id="selectAllResourceByStatusByPage" parameterType="CostVO" resultType="CostVO">
+		select 
+		resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		cloud_no,
+		resource_type,
+		page_no,
+		count(*) as resource_call_cnt
+		from
+		(
+		select 
+		 resource_status,
+		  resource_org_size,
+		  resource_new_size_type2,
+		  resource_name,
+		  b.cloud_no,
+		  a.page_no,
+		  resource_type  
+		from public.om_cloud_resource_log_tbl a
+		join public.om_cloud_optimizer_tbl b on a.resource_no = b.resource_no
+		where b.resource_org_size >= 0 and resource_type != 0
+		<if test='resource_type != 0'>
+			and resource_type = #{resource_type}
+		</if>	
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='startDate != 0'>
+				and  a.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= a.rgstr_date
+				</if>
+		
+		<if test='rgstr_yyyy != 0'>
+				and a.rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+		<if test='rgstr_mm != 0'>
+				and a.rgstr_mm = #{rgstr_mm}
+		</if>
+		) a
+		where 1=1 
+		<if test='resource_status != 0'>
+			and resource_status = #{resource_status}
+		</if>
+		<if test='page_no != 0'>
+			and page_no = #{page_no}
+		</if>		
+		group by resource_status,
+		resource_name,
+		resource_org_size,
+		resource_new_size_type2,
+		resource_type,
+		cloud_no,
+		page_no
+		order by resource_type;
+	</select>
+	
+	<select id="getSiteList" parameterType="CostVO" resultType="CostVO">
+		select ocopt.page_no ,ocopt.page_name  
+		from om_cloud_optimizer_page_tbl ocopt 
+		where ocopt.page_type != 0  
+		<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	</select>
+	
+	
+	<select id="getChartCostByResource" parameterType="CostVO" resultType="CostVO">		 
+
+		select (
+		select 
+		 CASE WHEN b.rgstr_dt >= a.updt_dt THEN 1
+		    ELSE 0
+		  END )as resource_status  ,a.resource_type ,a.resource_name ,a.resource_org_size ,a.resource_new_size_type2  ,count(*) as resource_call_cnt,b.cloud_no
+		from om_cloud_optimizer_tbl a 
+		join om_cloud_resource_log_tbl b on a.resource_no =b.resource_no 
+		where  a.resource_org_size >=0 and a.resource_type != 0
+		<if test='resource_type != 0'>
+			and a.resource_type = #{resource_type}
+		</if>
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='startDate != 0'>
+				and  b.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= b.rgstr_date
+				</if>
+		
+		<if test='rgstr_yyyy != 0'>
+				and b.rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+		<if test='rgstr_mm != 0'>
+				and b.rgstr_mm = #{rgstr_mm}
+		</if>
+		group by 1,a.resource_status ,a.resource_type ,a.resource_name ,a.resource_org_size ,a.resource_new_size_type2,b.cloud_no
+		;     
+	  
+	</select>
+	
+	
+	<select id="getChartCostByCloud" parameterType="CostVO" resultType="CostVO">		
+		
+	select  (
+		select 
+		 CASE WHEN b.rgstr_dt >= a.updt_dt THEN 1
+		    ELSE 0
+		  END ) as resource_status  ,a.resource_type ,a.resource_name ,a.resource_org_size ,a.resource_new_size_type2 ,b.page_no ,count(*) as resource_call_cnt,b.cloud_no
+		from om_cloud_optimizer_tbl a 
+		join om_cloud_resource_log_tbl b on a.resource_no =b.resource_no 
+		where  a.resource_org_size >=0 and a.resource_type != 0 	
+		<if test="site_list != null and site_list.size() > 0">
+	        AND b.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='startDate != 0'>
+				and  b.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= b.rgstr_date
+				</if>
+		
+		<if test='rgstr_yyyy != 0'>
+				and b.rgstr_yyyy = #{rgstr_yyyy}
+			</if>
+		<if test='rgstr_mm != 0'>
+				and b.rgstr_mm = #{rgstr_mm}
+		</if>
+		group by 1,a.resource_status ,a.resource_type ,a.resource_name ,a.resource_org_size ,a.resource_new_size_type2,b.page_no,b.cloud_no
+		;  
+	</select>
+	
+	<select id="getReSizeCnt" parameterType="CostVO" resultType="CostVO">
+		select a.resource_type, count(*) as opt_cnt from
+		(select * from om_cloud_optimizer_tbl ocot
+		where resource_org_size >= 0
+		and ocot.site_no IN 
+		<foreach collection="selected_site_list" item="site_no"  open="(" close=")" separator=",">
+			#{site_no}
+		</foreach>)a
+		where a.resource_type !=0 and a.resource_status = 1
+		group by a.resource_type;
+	</select>
+	
+	<select id="getAllSizeCnt" parameterType="CostVO" resultType="CostVO">
+		select a.resource_type, count(*) as opt_cnt from
+		(select * from om_cloud_optimizer_tbl ocot
+		where resource_org_size >= 0
+		and ocot.site_no IN 
+		<foreach collection="selected_site_list" item="site_no"  open="(" close=")" separator=",">
+			#{site_no}
+		</foreach>)a
+		where a.resource_type !=0
+		group by a.resource_type;
+	</select>
+	
+	<select id="getCostChart" parameterType="CostVO" resultType="CostVO">		
+		select count(*), a.resource_no,
+		sum(a.resource_org_size) as resource_org_size,
+				  SUM(
+				    CASE
+				      WHEN a.resource_new_size_type1 != a.resource_new_size_type2 THEN a.resource_new_size_type2
+				      ELSE 0
+				    END
+		  		) AS resource_new_size_type2
+		from (
+		select ocrlt.resource_no, ocolt.resource_org_size, ocolt.resource_new_size_type1, ocolt.resource_new_size_type2, ocrlt.rgstr_dt from om_cloud_resource_log_tbl ocrlt
+		join om_cloud_optimizer_tbl ocolt
+		on ocrlt. resource_no = ocolt.resource_no
+		where ocrlt.rgstr_dt >= #{rgstr_dt_st}::timestamp and ocrlt.rgstr_dt <![CDATA[<=]]> #{rgstr_dt}::timestamp
+		<!-- where rgstr_date = 20240102 and rgstr_hour = 14 and rgstr_min = 28 -->
+		and ocolt.resource_org_size >= 0
+		and ocrlt.site_no IN 
+		<foreach collection="selected_site_list" item="site_no"  open="(" close=")" separator=",">
+			#{site_no}
+		</foreach>
+		)a
+		group by a.resource_no
+	</select>
+	
+	<select id="getOrgCostChart" parameterType="CostVO" resultType="CostVO">		
+		select sum(b.resource_org_size) as resource_org_size, b.cloud_payment
+		from
+		(select count(*), a.resource_no,
+		 SUM(a.resource_org_size) AS resource_org_size, max(oct.cloud_payment) as cloud_payment
+		from (
+		select ocrlt.resource_no, ocolt.resource_org_size, ocolt.resource_new_size_type1, ocolt.resource_new_size_type2, ocrlt.rgstr_dt, ocrlt.cloud_no from om_cloud_resource_log_tbl ocrlt
+		join om_cloud_optimizer_tbl ocolt
+		on ocrlt. resource_no = ocolt.resource_no
+		where ocrlt.rgstr_dt >= #{rgstr_dt_st}::timestamp and ocrlt.rgstr_dt <![CDATA[<=]]> #{rgstr_dt}::timestamp
+		<!-- where rgstr_date = 20240102 and rgstr_hour = 14 and rgstr_min = 28 -->
+		and ocolt.resource_org_size >= 0
+		and ocrlt.site_no IN 
+		<foreach collection="selected_site_list" item="site_no"  open="(" close=")" separator=",">
+			#{site_no}
+		</foreach>
+		)a
+		left join om_cloud_tbl oct 
+		on a.cloud_no = oct.cloud_no
+		group by a.resource_no)b
+		group by b.cloud_payment
+	</select>
+	
+	<select id="getResizeCostChart" parameterType="CostVO" resultType="CostVO">		
+		select sum(b.resource_org_size) as resource_org_size, sum(b.resource_new_size_type2) as resource_new_size_type2, b.cloud_payment
+		from
+		(select count(*), a.resource_no,
+		sum(a.resource_org_size) as resource_org_size,
+				  sum(
+				    case
+				      when a.resource_new_size_type1 != a.resource_new_size_type2 and a.resource_new_size_type2 > 0 THEN a.resource_new_size_type2
+				      else a.resource_org_size
+				    end
+		  		) as resource_new_size_type2, max(oct.cloud_payment) as cloud_payment
+		from (
+		select ocrlt.resource_no, ocolt.resource_org_size, ocolt.resource_new_size_type1, ocolt.resource_new_size_type2, ocrlt.rgstr_dt, ocrlt.cloud_no from om_cloud_resource_log_tbl ocrlt
+		join om_cloud_optimizer_tbl ocolt
+		on ocrlt. resource_no = ocolt.resource_no
+		where ocrlt.rgstr_dt >= #{rgstr_dt_st}::timestamp and ocrlt.rgstr_dt <![CDATA[<=]]> #{rgstr_dt}::timestamp
+		<!-- where rgstr_date = 20240102 and rgstr_hour = 14 and rgstr_min = 28 -->
+		and ocolt.resource_org_size >= 0
+		and ocrlt.site_no IN 
+		<foreach collection="selected_site_list" item="site_no"  open="(" close=")" separator=",">
+			#{site_no}
+		</foreach>
+		)a
+		left join om_cloud_tbl oct 
+		on a.cloud_no = oct.cloud_no
+		group by a.resource_no)b
+		group by b.cloud_payment
+	</select>
+	
+	<select id="getTrafficChart" parameterType="CostVO" resultType="CostVO">		
+		select count(*) as cnt, ocrlt.rgstr_dt from om_cloud_resource_log_tbl ocrlt 
+		where ocrlt.rgstr_dt >= #{rgstr_dt}::timestamp and ocrlt.rgstr_dt <![CDATA[<=]]> #{rgstr_dt}::timestamp
+		<!-- where rgstr_date = 20240102 and rgstr_hour = 14 and rgstr_min = 28 -->
+				and ocrlt.site_no IN 
+				<foreach collection="selectedSite" item="site_no"  open="(" close=")" separator=",">
+					#{site_no}
+				</foreach>
+	</select>
+	
+	<select id="selectResourceListByParentIdTraffic" parameterType="OptimizerVO" resultType="OptimizerVO">
+		select
+ 		ROW_NUMBER() OVER (ORDER BY resource_name ) AS row_no,
+  		resource_name,
+		a.resource_no,
+		resource_type,
+		resource_org_size,
+		resource_new_size_type1,
+		resource_new_size_type2,
+		resource_status,
+		count(*) as resource_call_cnt
+		,cloud_no
+		from
+		(
+		select 
+		 CASE WHEN a.rgstr_dt >= b.updt_dt THEN 1
+		    ELSE 0
+		  END AS resource_status,
+		  a.resource_no,
+		  b.resource_name,
+		  resource_type,
+		  resource_org_size,
+		  resource_new_size_type1,
+		  resource_new_size_type2,
+		  b.cloud_no, 
+		  c.page_no
+		from public.om_cloud_resource_log_tbl a
+		join public.om_cloud_optimizer_tbl b on a.resource_no = b.resource_no
+		join om_cloud_optimizer_rel_tbl c on b.resource_no = c.resource_no 
+		where b.resource_type  !=0 and b.resource_org_size >0 
+				<if test='startDate != 0'>
+					and  a.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= a.rgstr_date
+				</if>
+				<if test='rgstr_yyyy != 0'>
+						and a.rgstr_yyyy = #{rgstr_yyyy}
+					</if>
+				<if test='rgstr_mm != 0'>
+						and a.rgstr_mm = #{rgstr_mm}
+				</if>
+				<if test='rgstr_dd != 0'>
+						and a.rgstr_dd = #{rgstr_dd}
+				</if>
+				
+			<choose>
+				<when test="resource_parent_no == 0"><!-- 전체 검색 -->
+					AND resource_type > 0
+				</when>
+				<otherwise>
+					AND resource_parent_no = #{resource_parent_no}
+				</otherwise>
+			</choose>		
+		and resource_status >0
+		) a
+		where a.resource_no != 0 and page_no != 0
+		group by resource_name,a.resource_no,resource_type,resource_org_size,resource_new_size_type1,resource_new_size_type2,resource_status,cloud_no
+		<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>
+		
+		<!-- select *, ROW_NUMBER() OVER (ORDER BY a.resource_type, a.resource_name ) AS row_no from
+		(SELECT *,
+			(SELECT COUNT(*) FROM om_cloud_resource_log_tbl ocrlt WHERE ocrlt.resource_no = ocot.resource_no
+			
+    			<if test='startDate != 0'>
+					and  ocrlt.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= ocrlt.rgstr_date
+				</if>
+				<if test='rgstr_yyyy != 0'>
+						and ocrlt.rgstr_yyyy = #{rgstr_yyyy}
+					</if>
+				<if test='rgstr_mm != 0'>
+						and ocrlt.rgstr_mm = #{rgstr_mm}
+				</if>
+				<if test='rgstr_dd != 0'>
+						and ocrlt.rgstr_dd = #{rgstr_dd}
+				</if>
+				) AS call_cnt
+		FROM om_cloud_optimizer_tbl ocot
+		WHERE 1 = 1		
+			<choose>
+				<when test="resource_parent_no == 0">전체 검색
+					AND resource_type > 0
+				</when>
+				<otherwise>
+					AND resource_parent_no = #{resource_parent_no}
+				</otherwise>
+			</choose>		
+			<include refid="site_no"></include>		
+		<include refid="sort"></include>)a
+		where a.call_cnt > 0
+		and a.resource_new_size_type2 > 0
+		<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>	 -->
+	</select>
+	
+	
+	<sql id="site_no">
+		<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>	
+	</sql>
+	
+	<sql id="sort">
+		<if test='sort != null and sort.size()!=0'>
+			<foreach collection="sort" item="sortItem">
+				<choose>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_type")'>
+						ORDER BY ocot.resource_type <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_name")'>
+						ORDER BY ocot.resource_name <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_status")'>
+						ORDER BY ocot.resource_type, ocot.resource_status <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type1")'>
+						ORDER BY ocot.resource_type, ocot.resource_new_size_type1 <![CDATA[${sortItem.dir}]]> 
+					</when>																																			
+					<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type2")'>
+						ORDER BY ocot.resource_type, ocot.resource_new_size_type2 <![CDATA[${sortItem.dir}]]> 
+					</when>		
+					<when test='sortItem.field != null and sortItem.field.equals("resource_call_cnt")'>
+						ORDER BY ocot.resource_type, ocot.resource_call_cnt <![CDATA[${sortItem.dir}]]> 
+					</when>																																								
+				</choose>
+			</foreach>
+		</if>
+		<if test='sort == null'>
+			ORDER BY resource_type, resource_name
+		</if>		
+	</sql>	
+	
+	
+	<select id="countResourceGroupByResourceParentNoTraffic" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		SELECT resource_parent_no, 
+			SUM(CASE WHEN 1 = 1
+			THEN 1 ELSE 0 END) AS count,
+			COUNT(*) AS entire_count
+		FROM om_cloud_optimizer_tbl ocot 
+		WHERE 1 = 1
+			AND resource_type > 0				
+			and resource_no in (select resource_no from om_cloud_resource_log_tbl ocolt 
+			where 1=1
+			<if test='startDate != 0'>
+					and  ocolt.rgstr_date >= #{startDate}
+				</if>
+				<if test='endDate != 0'>
+						and  #{endDate} >= ocolt.rgstr_date
+				</if>
+				<if test='rgstr_yyyy != 0'>
+						and ocolt.rgstr_yyyy = #{rgstr_yyyy}
+					</if>
+				<if test='rgstr_mm != 0'>
+						and ocolt.rgstr_mm = #{rgstr_mm}
+				</if>
+				<if test='rgstr_dd != 0'>
+						and ocolt.rgstr_dd = #{rgstr_dd}
+				</if>
+				 AND resource_type != 0 and resource_status > 0
+			group by resource_no)
+			and resource_org_size >= 0
+			<include refid="site_no"></include>
+		GROUP BY resource_parent_no 
+	</select>
+
+	<select id="selectResourceFolderAllTraffic" parameterType="OptimizerVO" resultType="java.util.HashMap">
+		WITH RECURSIVE ResourceHierarchy AS (
+		    SELECT 
+		        resource_no,
+		        resource_name,
+		        resource_parent_no,
+		        site_no,
+		        0 AS level
+		    FROM 
+		        om_cloud_optimizer_tbl 
+		    WHERE 
+		        resource_parent_no = 0
+		  UNION ALL
+		    SELECT 
+		        child.resource_no,
+		        child.resource_name,
+		        child.resource_parent_no,
+		        child.site_no,
+		        parent.level + 1 AS level
+		    FROM 
+		        om_cloud_optimizer_tbl AS child
+		    INNER JOIN 
+		        ResourceHierarchy AS parent ON child.resource_parent_no = parent.resource_no
+		    WHERE
+		        child.resource_type = 0
+		)
+		SELECT 
+		    LPAD('', level, ' ') || resource_no AS indented_resource_no,
+		    resource_no,
+		    resource_name,
+		    resource_parent_no,
+		    site_no,
+		    level,
+		    0 AS count,
+		    0 AS total_count,
+		    0 AS entire_count
+		FROM 
+		    ResourceHierarchy
+		ORDER BY 
+		    level, resource_no;
+	</select>
+</mapper>

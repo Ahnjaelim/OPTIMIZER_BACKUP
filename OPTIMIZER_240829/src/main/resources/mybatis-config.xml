@@ -1,0 +1,29 @@
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="false"/>
+        <setting name="logImpl" value="LOG4J2"/>
+    </settings>
+    <typeAliases>
+        <typeAlias alias="UserVO" type="com.wellconn.optimizer.model.UserVO"/>
+        <typeAlias alias="InspLogVO" type="com.wellconn.optimizer.model.InspLogVO"/>
+        <typeAlias alias="OptimizerVO" type="com.wellconn.optimizer.model.OptimizerVO"/>
+        <typeAlias alias="OptimizerPageVO" type="com.wellconn.optimizer.model.OptimizerPageVO"/>
+        <typeAlias alias="OptimizerLogVO" type="com.wellconn.optimizer.model.OptimizerLogVO"/>
+        <typeAlias alias="OptimizerRelVO" type="com.wellconn.optimizer.model.OptimizerRelVO"/>
+        <typeAlias alias="CostVO" type="com.wellconn.optimizer.model.CostVO"/>
+        <typeAlias alias="CloudVO" type="com.wellconn.optimizer.model.CloudVO"/>
+        <typeAlias alias="ProjectVO" type="com.wellconn.optimizer.model.ProjectVO"/>
+        <typeAlias alias="SiteManageVO" type="com.wellconn.optimizer.model.SiteManageVO"/>
+        <typeAlias alias="SshVO" type="com.wellconn.optimizer.model.SshVO"/>
+        <typeAlias alias="AlgorithmVO" type="com.wellconn.optimizer.model.AlgorithmVO"/>
+        <typeAlias alias="AnalysisVO" type="com.wellconn.optimizer.model.AnalysisVO"/>
+        <typeAlias alias="AlertVO" type="com.wellconn.optimizer.model.AlertVO"/>
+        <typeAlias alias="OptimizerMenuVO" type="com.wellconn.optimizer.model.OptimizerMenuVO"/>
+        <typeAlias alias="ReportVO" type="com.wellconn.optimizer.model.ReportVO"/>
+        <typeAlias alias="ConfigVO" type="com.wellconn.optimizer.model.ConfigVO"/>
+        <typeAlias alias="LightHouseVO" type="com.wellconn.optimizer.model.LightHouseVO"/>
+    </typeAliases>    
+    
+</configuration>

@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.OptimizerPageMapper">
+
+	<sql id="site_no">
+		<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>	
+	</sql>
+	
+	<sql id="site_no_v2">
+	    <if test="site_list != null and site_list.size() > 0">
+	        AND ${tableAlias}.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+	    </if>
+	</sql>	
+
+	<select id="selectNow" resultType="String">
+		select now()
+	</select>
+
+	<select id="selectAll" parameterType="OptimizerPageVO"	resultType="OptimizerPageVO">
+		select * from om_cloud_optimizer_page_tbl
+			where 1=1
+			<if test="page_parent_no > 0">
+				AND page_parent_no = #{page_parent_no}
+			</if>
+			<if test="page_parent_no == 0">
+				AND page_parent_no = 0
+			</if>
+			<include refid="site_no"></include>			
+	</select>
+	
+	<select id="selectPageAll" parameterType="OptimizerPageVO"	resultType="OptimizerPageVO">
+		SELECT * FROM om_cloud_optimizer_page_tbl ocopt 
+		WHERE page_type = 1
+		<include refid="site_no"></include>	
+	</select>
+
+	<select id="selectByPageNo" parameterType="OptimizerPageVO" resultType="OptimizerPageVO">
+		SELECT * from om_cloud_optimizer_page_tbl
+		WHERE page_no = #{page_no}
+	</select>
+
+	<select id="selectPageAllByResourceNo" parameterType="OptimizerPageVO" resultType="OptimizerPageVO">
+		SELECT *
+		FROM om_cloud_optimizer_rel_tbl ocort
+		LEFT JOIN om_cloud_optimizer_page_tbl ocopt ON ocopt.page_no = ocort.page_no
+		WHERE ocort.resource_no = #{resource_no}
+	</select>
+
+	<select id="selectPageParentAllByPageNo" parameterType="OptimizerPageVO" resultType="OptimizerPageVO">
+		WITH RECURSIVE recursive_cte AS (
+		    SELECT 
+		        page_no,
+		        page_parent_no,
+		        page_no AS top_parent,
+		        page_name,
+		        1 AS level,
+		        page_type 
+		    FROM 
+		        om_cloud_optimizer_page_tbl
+		    WHERE 
+		        page_no = ${page_no}
+		    UNION ALL
+		    SELECT 
+		        c.page_no,
+		        c.page_parent_no,
+		        p.top_parent,
+		        c.page_name,
+		        p.level + 1,
+		        c.page_type 
+		    FROM 
+		        om_cloud_optimizer_page_tbl c
+		    JOIN 
+		        recursive_cte p ON c.page_no = p.page_parent_no
+		)
+		SELECT 
+			page_name,
+		    LPAD('', level - 1, '--') || page_name AS indented_page_name,
+		    page_no,
+		    page_parent_no,
+		    top_parent AS top_parent_page_no,
+		    level,
+		    page_type 
+		FROM 
+		    recursive_cte
+		ORDER BY 
+		    top_parent, page_no;  
+	</select>
+	
+	<select id="selectRecursivePageAllByPageNo" parameterType="OptimizerPageVO" resultType="OptimizerPageVO">
+		WITH RECURSIVE PageHierarchy AS (
+		  SELECT
+		    page_no,
+		    page_url,
+		    page_name,
+		    page_type,
+		    page_parent_no,
+		    page_path,
+		    page_new_path,
+		    page_path_hash,
+		    cloud_no,
+		    site_no
+		  FROM om_cloud_optimizer_page_tbl ocopt 
+		  WHERE page_parent_no = 0
+		  UNION ALL
+		  SELECT
+		    child.page_no,
+		    child.page_url,
+		    child.page_name,
+		    child.page_type,
+		    child.page_parent_no,
+		    child.page_path,
+		    child.page_new_path,
+		    child.page_path_hash,
+		    child.cloud_no,
+		    child.site_no
+		  from om_cloud_optimizer_page_tbl child
+		  INNER JOIN PageHierarchy parent ON child.page_parent_no = parent.page_no
+		)
+		SELECT *
+		FROM PageHierarchy
+		ORDER BY page_name;
+	</select>
+	
+	<select id="selectPageByPageName" parameterType="OptimizerPageVO" resultType="OptimizerPageVO">
+		SELECT * FROM om_cloud_optimizer_page_tbl ocopt 
+		WHERE page_name LIKE CONCAT('%', #{page_name}, '%') 
+		LIMIT 1
+	</select>
+	
+	<update id="updateLazyloadButton" parameterType="OptimizerPageVO">
+   	 UPDATE om_cloud_optimizer_page_tbl
+    	SET use_lazyload = #{use_lazyload}
+    	WHERE page_no = #{page_no}
+	</update>
+	
+	<select id="updateLazyloadStatus" parameterType="OptimizerPageVO" resultType="OptimizerPageVO">
+		SELECT * FROM om_cloud_optimizer_page_tbl ocopt 
+	</select>
+	
+	<update id="updateLazyloadButtonAll" parameterType="OptimizerPageVO">
+		UPDATE om_cloud_optimizer_page_tbl
+    	SET use_lazyload = #{use_lazyload}
+    	WHERE page_no != 0;
+	</update>
+	
+    <select id="selectPageSpeedLog" parameterType="OptimizerPageVO" resultType="java.util.HashMap">
+		<choose>
+			<when test='startIndex == null'>
+				SELECT opsl.log_sn, opsl.page_url, opsl.created_at, opsl.duration, ocopt.page_no
+				FROM om_page_speed_log opsl 
+				LEFT JOIN om_cloud_optimizer_page_tbl ocopt 
+				ON opsl.page_url = ocopt.page_url 
+				WHERE opsl.is_ok = 1
+					AND ocopt.page_type = 1
+					AND opsl.created_at >= date_trunc('day', current_date) 
+					AND opsl.created_at <![CDATA[<]]> date_trunc('day', current_date) + interval '1 day'			
+					<include refid="site_no_v2"><property name="tableAlias" value="ocopt" /></include>	
+				ORDER BY created_at DESC
+				LIMIT
+				<choose>
+					<when test='limit == null'>2000</when>
+					<otherwise>#{limit}</otherwise>
+				</choose>
+			</when>
+			<otherwise>
+				SELECT opsl.log_sn, opsl.page_url, opsl.created_at, opsl.duration, ocopt.page_no
+				FROM om_page_speed_log opsl 
+				LEFT JOIN om_cloud_optimizer_page_tbl ocopt 
+				ON opsl.page_url = ocopt.page_url 
+				WHERE opsl.is_ok = 1
+					AND ocopt.page_type = 1
+					AND opsl.log_sn >= #{startIndex}			
+					<include refid="site_no_v2"><property name="tableAlias" value="ocopt" /></include>	
+				ORDER BY created_at DESC
+			</otherwise>
+		</choose>
+    </select>
+    
+	<select id="selectQueryTest" parameterType="OptimizerPageVO" resultType="java.util.HashMap">
+		SELECT opsl.log_sn, opsl.page_url, opsl.created_at, opsl.duration, ocopt.page_no
+		FROM om_page_speed_log opsl 
+		LEFT JOIN om_cloud_optimizer_page_tbl ocopt 
+		ON opsl.page_url = ocopt.page_url 
+		WHERE opsl.is_ok = 1
+			AND ocopt.page_type = 1			
+			<include refid="site_no_v2"><property name="tableAlias" value="ocopt" /></include>	
+		ORDER BY created_at DESC
+    </select>  
+    
+    <select id="selectFirstPage" parameterType="OptimizerPageVO" resultType="OptimizerPageVO">
+		SELECT * FROM om_cloud_optimizer_page_tbl ocopt 
+		WHERE site_no = #{site_no}
+			AND page_type = 1
+		ORDER BY page_no 
+		LIMIT 1
+    </select>  
+    
+</mapper>

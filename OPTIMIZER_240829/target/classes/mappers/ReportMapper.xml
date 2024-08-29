@@ -1,0 +1,779 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.ReportMapper">
+	
+	
+	<select id="selectSite" parameterType="ReportVO" resultType="ReportVO">
+		select * from om_cloud_site_tbl ocst where 1=1
+		<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    </select>
+	
+	<select id="contentChartAll" parameterType="ReportVO" resultType="ReportVO">
+		SELECT 
+		    resource_type,
+		    COUNT(*) AS all_cnt,
+		    SUM(CASE WHEN resource_status > 0 THEN 1 ELSE 0 END) AS opt_cnt,
+		    SUM(CASE WHEN 0 > resource_status THEN 1 ELSE 0 END) AS unOpt_cnt,
+		    ROUND((SUM(CASE WHEN resource_status > 0  THEN 1 ELSE 0 END) * 100.0) / COUNT(*)) AS percent
+		FROM 
+		    om_cloud_optimizer_tbl ocot
+		WHERE 
+		    resource_type > 0 
+		    <if test='resource_type == 99'>
+		     	  AND 5 > resource_type 
+			</if>
+			<if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>
+		    AND resource_org_size > 0			
+		<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	GROUP BY 
+		    resource_type;
+	</select>
+	
+	<select id="selectAvgPerGroup" parameterType="ReportVO" resultType="ReportVO">
+	       WITH resource_types AS (
+			    SELECT DISTINCT resource_type 
+			    FROM om_cloud_optimizer_tbl 
+			    WHERE resource_type > 0 
+			)
+			SELECT 
+			    rt.resource_type,
+			    COALESCE(ROUND(AVG(ocot.resource_org_size), 1), 0) AS resource_org_size,
+			    COALESCE(ROUND(AVG(ocot.resource_type1_size), 1), 0) AS resource_type1_size,
+			    COALESCE(
+			        ROUND(
+			            CASE 
+			                WHEN AVG(ocot.resource_org_size) = 0 THEN 0 
+			                ELSE ((AVG(ocot.resource_org_size) - AVG(ocot.resource_type1_size)) / AVG(ocot.resource_org_size)) * 100 
+			            END
+			        ), 0
+			    ) AS percent
+			FROM 
+			    resource_types rt
+			LEFT JOIN 
+			    om_cloud_optimizer_tbl ocot ON rt.resource_type = ocot.resource_type
+			    AND ocot.resource_org_size > 0
+			    AND ocot.resource_type1_size > 0
+			      <if test="site_list != null and site_list.size() > 0">
+			        AND ocot.site_no IN
+			        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+			            CAST(#{item} AS INTEGER)
+			        </foreach>
+		    	</if>
+			
+			GROUP BY 
+			    rt.resource_type
+			ORDER BY 
+			    rt.resource_type;
+	</select>
+	
+	
+	
+	<select id="selectAvgTimeGroup" parameterType="ReportVO" resultType="ReportVO">
+	
+	        
+	        
+	        
+	        
+	               
+	       WITH resource_types AS (
+			    SELECT DISTINCT resource_type 
+			    FROM om_cloud_optimizer_tbl 
+			    WHERE resource_type > 0 
+			)
+			SELECT 
+			    rt.resource_type,
+			    COALESCE(ROUND(AVG(ocot.org_time), 1), 0) AS org_time,
+			    COALESCE(ROUND(AVG(ocot.new_time), 1), 0) AS new_time,
+			    COALESCE(
+			        ROUND(
+			            CASE 
+			                WHEN AVG(ocot.org_time) = 0 THEN 0 
+			                ELSE ((AVG(ocot.org_time) - AVG(ocot.new_time)) / AVG(ocot.org_time)) * 100 
+			            END
+			        ), 0
+			    ) AS percent
+			FROM 
+			    resource_types rt
+			LEFT JOIN 
+			    om_cloud_optimizer_tbl ocot ON rt.resource_type = ocot.resource_type
+			    AND ocot.org_time > 0
+			    AND ocot.new_time > 0
+			    <if test="site_list != null and site_list.size() > 0">
+			        AND ocot.site_no IN
+			        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+			            CAST(#{item} AS INTEGER)
+			        </foreach>
+		    	</if>
+			GROUP BY 
+			    rt.resource_type
+			ORDER BY 
+			    rt.resource_type;
+	</select>
+	
+	<select id="selectAvgComp" parameterType="ReportVO" resultType="ReportVO">
+	
+			 WITH resource_types AS (
+			    SELECT DISTINCT resource_type 
+			    FROM om_cloud_optimizer_tbl 
+			    WHERE resource_type > 4 
+			)
+			select rt.resource_type,
+			COALESCE(
+			        ROUND(
+			            CASE 
+			                WHEN 0 >= AVG(ocot.resource_org_size)  THEN 0 
+			                ELSE ((AVG(ocot.resource_org_size) - AVG(ocot.resource_new_size_type2)) / AVG(ocot.resource_org_size)) * 100 
+			            END
+			        ), 0
+			    ) AS percent
+			FROM
+			   resource_types rt
+			LEFT JOIN 
+			    om_cloud_optimizer_tbl ocot ON rt.resource_type = ocot.resource_type
+			and resource_org_size >0 and resource_new_size_type2  >0 and resource_status ='1'
+			group by rt.resource_type 
+	</select>
+	
+	
+	
+		<select id="selectTimetableFast" parameterType="ReportVO" resultType="ReportVO">
+	
+			SELECT
+			  row_number() OVER (ORDER BY ((org_time - new_time) * 100.0 / org_time) desc) AS no,
+		    resource_name,
+		    org_time,
+		    new_time,
+		    ROUND(
+        CASE
+            WHEN org_time = 0 THEN 0
+            ELSE (org_time - new_time) * 100.0 / org_time
+        END, 1
+    ) AS percent,
+			  resource_status
+			FROM
+			  om_cloud_optimizer_tbl
+			WHERE org_time != new_time
+			  <if test='resource_type == 99'>
+		     	  AND 5 > resource_type 
+			</if>
+			<if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>	    
+	  <if test='resource_type != 0 and resource_type != 99 and resource_type !=90'>
+			and resource_type = #{resource_type}
+	 </if>	
+			  <if test='resource_status != 0'>
+		     	  AND resource_status = #{resource_status}
+			</if>
+				<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+			ORDER BY
+			   percent desc, no asc
+			LIMIT 10
+	        
+	</select>
+	
+	
+	<select id="selectTimetableSlow" parameterType="ReportVO" resultType="ReportVO">
+	
+			SELECT
+			  row_number() OVER (ORDER BY ((org_time - new_time) * 100.0 / org_time) asc) AS no,
+		    resource_name,
+		    org_time,
+		    new_time,
+		    ROUND(
+        CASE
+            WHEN org_time = 0 THEN 0
+            ELSE (org_time - new_time) * 100.0 / org_time
+        END, 1
+    ) AS percent,
+			  resource_status
+			FROM
+			  om_cloud_optimizer_tbl
+			WHERE org_time != new_time
+			  <if test='resource_type == 99'>
+		     	  AND 5 > resource_type 
+			</if>
+			<if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>	    
+	  <if test='resource_type != 0 and resource_type != 99 and resource_type !=90'>
+			and resource_type = #{resource_type}
+	 </if>	
+			  <if test='resource_status != 0'>
+		     	  AND resource_status = #{resource_status}
+			</if>
+				<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+			ORDER BY
+			  percent asc, no asc
+			LIMIT 10
+			
+			
+	        
+	</select>
+	
+	<select id="selectSizeGoodTable" parameterType="ReportVO" resultType="ReportVO">
+			
+	SELECT 
+	row_number() OVER (ORDER by ROUND(((CAST(resource_org_size AS DECIMAL) - CAST(resource_new_size_type2 AS DECIMAL)) / CAST(resource_org_size AS DECIMAL) * 100), 1) desc) as no ,
+    resource_name,
+    resource_org_size,
+    resource_new_size_type2,
+    ROUND(((CAST(resource_org_size AS DECIMAL) - CAST(resource_new_size_type2 AS DECIMAL)) / CAST(resource_org_size AS DECIMAL) * 100), 1) AS percent
+FROM 
+    om_cloud_optimizer_tbl ocot
+WHERE 
+    resource_org_size > 0 
+    AND resource_new_size_type2 > 0 
+    AND resource_status = '1'
+    <if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>	    
+	  <if test='resource_type != 0 and resource_type != 99 and resource_type !=90'>
+			and resource_type = #{resource_type}
+	 </if>	
+			  <if test='resource_status != 0'>
+		     	  AND resource_status = #{resource_status}
+			</if>
+				<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	limit 10
+			
+			
+			
+	        
+	</select>
+	<select id="selectSizeBadTable" parameterType="ReportVO" resultType="ReportVO">
+		SELECT 
+	row_number() OVER (ORDER by ROUND(((CAST(resource_org_size AS DECIMAL) - CAST(resource_new_size_type2 AS DECIMAL)) / CAST(resource_org_size AS DECIMAL) * 100), 1)) as no,
+    resource_name,
+    resource_org_size,
+    resource_new_size_type2,
+    ROUND(((CAST(resource_org_size AS DECIMAL) - CAST(resource_new_size_type2 AS DECIMAL)) / CAST(resource_org_size AS DECIMAL) * 100), 1) AS percent
+FROM 
+    om_cloud_optimizer_tbl ocot
+WHERE 
+    resource_org_size > 0 
+    AND resource_new_size_type2 > 0 
+    AND resource_status = '1'
+	
+	<if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>	    
+	  <if test='resource_type != 0 and resource_type != 99 and resource_type !=90'>
+			and resource_type = #{resource_type}
+	 </if>	
+			  <if test='resource_status != 0'>
+		     	  AND resource_status = #{resource_status}
+			</if>
+				<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>		
+			limit 10
+	        
+	</select>
+	
+	
+	
+	<select id="getUrl" parameterType="ReportVO" resultType="ReportVO">
+	select ocort.page_no  ,sum(ocot.org_time) AS org_time,sum(ocot.new_time) AS new_time,
+ ROUND(
+	           		CASE 
+	                   WHEN AVG(org_time) = 0 THEN 0 
+	                   ELSE ((AVG(org_time) - AVG(new_time)) / AVG(org_time)) * 100 
+	               END
+	           ) AS percent,
+	           (select site_address from om_cloud_site_tbl ocst where 1=1 
+	           <if test="site_list != null and site_list.size() > 0">
+			        AND site_no IN
+			        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+			            CAST(#{item} AS INTEGER)
+			        </foreach>
+		    	</if>) as site_address,
+	            (select page_url from om_cloud_optimizer_page_tbl where page_no = ocort.page_no) as page_url
+from om_cloud_optimizer_tbl ocot join om_cloud_optimizer_rel_tbl ocort on ocot.resource_no  = ocort.resource_no 
+	where 1=1
+	        <if test="site_list != null and site_list.size() > 0">
+	        AND ocot.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	and ocot.new_time >0
+	and ocot.resource_type >0
+	group by ocort.page_no 
+	order by percent desc 	        
+	limit 1
+		
+	        
+	</select>
+	
+	<select id="getUrlFastTop10" parameterType="ReportVO" resultType="ReportVO">	
+		select row_number() OVER (ORDER by 
+			ROUND(
+	           		CASE 
+	                   WHEN AVG(org_time) = 0 THEN 0 
+	                   ELSE ((AVG(org_time) - AVG(new_time)) / AVG(org_time)) * 100 
+	               END
+	           ,1) 
+			desc ) as no,   
+		ocort.page_no  ,sum(ocot.org_time) AS org_time,sum(ocot.new_time) AS new_time,
+ ROUND(
+	           		CASE 
+	                   WHEN AVG(org_time) = 0 THEN 0 
+	                   ELSE ((AVG(org_time) - AVG(new_time)) / AVG(org_time)) * 100 
+	               END
+	           ,1) AS percent,
+	           (select site_address from om_cloud_site_tbl ocst where 1=1 
+	           <if test="site_list != null and site_list.size() > 0">
+			        AND site_no IN
+			        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+			            CAST(#{item} AS INTEGER)
+			        </foreach>
+		    	</if>) as site_address,
+	            (select page_url from om_cloud_optimizer_page_tbl where page_no = ocort.page_no) as page_url
+from om_cloud_optimizer_tbl ocot join om_cloud_optimizer_rel_tbl ocort on ocot.resource_no  = ocort.resource_no 
+	where 1=1
+	        <if test="site_list != null and site_list.size() > 0">
+	        AND ocot.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	and ocot.new_time >0
+	and ocot.resource_type >0
+	  <if test='resource_type != 99'>
+			and resource_type = #{resource_type}
+	 </if>
+	group by ocort.page_no 
+	order by percent desc 	  
+		LIMIT 10
+	        
+	</select>
+	
+	<select id="getUrlSlowTop10" parameterType="ReportVO" resultType="ReportVO">	
+		select row_number() OVER (ORDER by 
+			ROUND(
+	           		CASE 
+	                   WHEN AVG(org_time) = 0 THEN 0 
+	                   ELSE ((AVG(org_time) - AVG(new_time)) / AVG(org_time)) * 100 
+	               END
+	           ,1) 
+			asc ) as no,   
+		ocort.page_no  ,sum(ocot.org_time) AS org_time,sum(ocot.new_time) AS new_time,
+ ROUND(
+	           		CASE 
+	                   WHEN AVG(org_time) = 0 THEN 0 
+	                   ELSE ((AVG(org_time) - AVG(new_time)) / AVG(org_time)) * 100 
+	               END
+	           ,1) AS percent,
+	           (select site_address from om_cloud_site_tbl ocst where 1=1 
+	           <if test="site_list != null and site_list.size() > 0">
+			        AND site_no IN
+			        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+			            CAST(#{item} AS INTEGER)
+			        </foreach>
+		    	</if>) as site_address,
+	            (select page_url from om_cloud_optimizer_page_tbl where page_no = ocort.page_no) as page_url
+from om_cloud_optimizer_tbl ocot join om_cloud_optimizer_rel_tbl ocort on ocot.resource_no  = ocort.resource_no 
+	where 1=1
+	        <if test="site_list != null and site_list.size() > 0">
+	        AND ocot.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	and ocot.new_time >0
+	and ocot.resource_type >0
+	<if test='resource_type != 99 '>
+			and resource_type = #{resource_type}
+	 </if>
+	group by ocort.page_no 
+	order by percent asc 	  
+		LIMIT 10
+	        
+	</select>
+	
+	
+	<select id="getUrlforReport" parameterType="ReportVO" resultType="ReportVO">
+	select ocort.page_no  ,sum(ocot.org_time) AS org_time,sum(ocot.new_time) AS new_time,
+ ROUND(
+	           		CASE 
+	                   WHEN AVG(org_time) = 0 THEN 0 
+	                   ELSE ((AVG(org_time) - AVG(new_time)) / AVG(org_time)) * 100 
+	               END
+	           ,1) AS percent,
+	           (select site_address from om_cloud_site_tbl ocst where 1=1 
+	           <if test="site_list != null and site_list.size() > 0">
+			        AND site_no IN
+			        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+			            CAST(#{item} AS INTEGER)
+			        </foreach>
+		    	</if>) as site_address,
+	            (select page_url from om_cloud_optimizer_page_tbl where page_no = ocort.page_no) as page_url
+from om_cloud_optimizer_tbl ocot join om_cloud_optimizer_rel_tbl ocort on ocot.resource_no  = ocort.resource_no 
+	where 1=1
+	        <if test="site_list != null and site_list.size() > 0">
+	        AND ocot.site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	and ocot.new_time >0
+	and ocot.resource_type >0
+	group by ocort.page_no 
+	order by percent desc 	        
+	</select>
+	
+	
+	<select id="selectAllresource" parameterType="ReportVO" resultType="ReportVO">
+	  select  ROW_NUMBER() over (order by resource_no ) as no,resource_no ,resource_type,resource_name,resource_status,resource_org_size ,resource_new_size_type2 from om_cloud_optimizer_tbl ocot 
+	  where 1=1 
+	  and resource_type > 0 
+	  and resource_org_size >0
+	   
+	<if test='resource_type == 99'>
+		     	  AND 5 > resource_type 
+			</if>
+			<if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>	    
+	  <if test='resource_type != 0 and resource_type != 99 and resource_type !=90'>
+			and resource_type = #{resource_type}
+	 </if>	
+	   <if test='resource_status > 0'>
+			and resource_status = #{resource_status}
+	 </if>
+	 <if test='resource_status == -1'>
+			and  1  > resource_status 
+	 </if>
+	     <if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	<if test='sort != null and sort.size()!=0'>
+			<foreach collection="sort" item="sortItem">
+				<choose>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_type")'>
+						ORDER BY resource_type <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_name")'>
+						ORDER BY  resource_name <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_status")'>
+						ORDER BY  resource_status <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_org_size")'>
+						ORDER BY  resource_org_size  <![CDATA[${sortItem.dir}]]> 
+					</when>																																			
+					<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type2")'>
+						ORDER BY  resource_new_size_type2 <![CDATA[${sortItem.dir}]]> 
+					</when>																																																		
+				</choose>
+			</foreach>
+		</if>
+    	
+		<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>
+	        
+	</select>
+	
+	<select id="selectAllresourceForReport" parameterType="ReportVO" resultType="ReportVO">
+	  select  ROW_NUMBER() over (order by resource_type,resource_new_size_type2 ) as no,resource_no ,resource_type,resource_name,resource_status,resource_org_size ,resource_new_size_type2 from om_cloud_optimizer_tbl ocot 
+	  where 1=1 
+	  and resource_org_size >0
+	  and resource_type>0
+	     <if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	
+    	 <if test='resource_type == 99'>
+		     	  AND 5 > resource_type 
+			</if>
+			<if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>	    
+   <if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	  order by resource_type, resource_new_size_type2 asc
+    	      
+	</select>
+	
+	<select id="selectTimeResourceForReport" parameterType="ReportVO" resultType="ReportVO">
+		select  ROW_NUMBER() over (order by resource_no ) as no,resource_no ,resource_type,resource_name,resource_status,org_time  ,new_time, resource_org_size, resource_type1_size  from om_cloud_optimizer_tbl ocot 
+		 where 1=1 
+	  and resource_type > 0 
+	  and resource_org_size >0
+	  and resource_status = '1'
+	   <if test='resource_type == 99'>
+		     	  AND 5 > resource_type 
+			</if>
+			<if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>	    
+	  
+	     <if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+    	      
+	</select>
+	
+		
+	
+	
+	<select id="optimizer_title" parameterType="ReportVO" resultType="ReportVO">
+select main.resource_type,main.al_type,sum(main.greatest_type) as total_bytes ,
+(select algorithm_name from om_algorithm oa  where algorithm_type = main.resource_type and al_type= main.al_type
+)
+from (
+SELECT 
+    resource_type,
+    case
+	     WHEN resource_type IN (1, 2) THEN greatest(
+	     	resource_org_size-resource_type1_size,
+             resource_org_size-resource_type2_size,
+             resource_org_size-resource_type3_size,
+             resource_org_size-resource_type4_size
+	     )	     
+        WHEN resource_type IN (3, 4) THEN greatest(
+            resource_org_size-resource_type1_size,
+             resource_org_size-resource_type2_size,
+             resource_org_size-resource_type3_size
+        )
+        ELSE greatest(
+              resource_org_size-resource_type1_size
+        )
+    END AS greatest_type,
+    case
+	     WHEN resource_type IN (1, 2) THEN case
+	     	WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size,
+                    resource_org_size - resource_type4_size
+                ) = resource_org_size - resource_type1_size THEN 1
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size,
+                    resource_org_size - resource_type4_size
+                ) = resource_org_size - resource_type2_size THEN 2
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size,
+                    resource_org_size - resource_type4_size
+                ) = resource_org_size - resource_type3_size THEN 3
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size,
+                    resource_org_size - resource_type4_size
+                ) = resource_org_size - resource_type4_size THEN 4
+	     end
+	     
+        WHEN resource_type IN (3, 4) THEN CASE
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size
+                ) = resource_org_size - resource_type1_size THEN 1
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size
+                ) = resource_org_size - resource_type2_size THEN 2
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size
+                ) = resource_org_size - resource_type3_size THEN 3
+        END
+        ELSE CASE
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size
+                ) = resource_org_size - resource_type1_size THEN 1
+           
+        END
+    END as al_type    
+FROM 
+    om_cloud_optimizer_tbl ocot
+WHERE 
+    1=1
+   and  0 > resource_status
+   and resource_org_size >0
+   and resource_type >0
+     <if test='resource_type == 99'>
+		     	  AND 5 > resource_type 
+			</if>
+			<if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>	    
+   <if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+) main
+
+group by main.resource_type,main.al_type 
+order by resource_type
+
+   
+   
+	</select>
+	
+	
+	
+	<select id="optimizer_list" parameterType="ReportVO" resultType="ReportVO">
+	select resource_type,resource_name,resource_org_size,greatest_type,al_type
+,(select algorithm_name from om_algorithm oa  where algorithm_type = main.resource_type and main.al_type= oa.al_type) 
+from (
+	SELECT 
+    resource_type,
+    resource_name,
+    resource_org_size,
+    case
+	     WHEN resource_type IN (1, 2) THEN Least(
+	         resource_type1_size,
+            resource_type2_size,
+            resource_type3_size,
+            resource_type4_size
+            )
+	      WHEN resource_type IN (3, 4) THEN Least(
+	            resource_type1_size,
+	            resource_type2_size,
+	            resource_type3_size
+	        )
+        ELSE Least(
+			resource_type1_size
+        )
+    END AS greatest_type,
+    case
+	    WHEN resource_type IN (1, 2) THEN CASE
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size,
+                    resource_org_size - resource_type4_size
+                ) = resource_org_size - resource_type1_size THEN 1
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size,
+                    resource_org_size - resource_type4_size
+                ) = resource_org_size - resource_type2_size THEN 2
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size,
+                    resource_org_size - resource_type4_size
+                ) = resource_org_size - resource_type3_size THEN 3
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size,
+                    resource_org_size - resource_type4_size
+                ) = resource_org_size - resource_type4_size THEN 4
+        END
+        WHEN resource_type IN (3, 4) THEN CASE
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size
+                ) = resource_org_size - resource_type1_size THEN 1
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size
+                ) = resource_org_size - resource_type2_size THEN 2
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size,
+                    resource_org_size - resource_type2_size,
+                    resource_org_size - resource_type3_size
+                ) = resource_org_size - resource_type3_size THEN 3
+        END
+        ELSE CASE
+            WHEN GREATEST(
+                    resource_org_size - resource_type1_size
+                    
+                ) = resource_org_size - resource_type1_size THEN 1
+        END
+    END as al_type
+FROM 
+    om_cloud_optimizer_tbl ocot
+WHERE 
+    1=1
+     and  0 > resource_status
+   and resource_org_size >0
+   and resource_type >0
+   <if test='resource_type == 99'>
+		     	  AND 5 > resource_type 
+			</if>
+			<if test='resource_type == 90'>
+		     	  AND resource_type > 4 
+			</if>	    
+	  
+<if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+ order by resource_type asc ,greatest_type desc
+) main
+   
+
+
+	</select>
+	
+	
+	
+	
+	
+	
+</mapper>

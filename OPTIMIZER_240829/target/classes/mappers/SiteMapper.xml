@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizer.mapper.SiteMapper">
+
+	
+	<select id="selectSiteAll" parameterType="SiteManageVO" resultType="SiteManageVO">
+		select  row_number() over(ORDER by site_no) as row_no
+		 , *,(select cloud_company from om_cloud_tbl oct  where cloud_no = ocst.cloud_no) as cloud_company from om_cloud_site_tbl ocst 
+		 where site_manager = #{lgn_nm}
+		<if test="searchKeyword != null and searchKeyword != '' and searchType == 'site_name'">
+		    and site_name like concat('%', #{searchKeyword}, '%')
+		</if>
+		<if test="searchKeyword != null and searchKeyword != '' and searchType == 'site_address'">
+		    and site_address like concat('%', #{searchKeyword}, '%')
+		</if>
+		order by row_no desc
+		<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>
+	</select>
+	
+	<select id="selectDuplicateSiteNm" parameterType="SiteManageVO" resultType="SiteManageVO">
+		select  * from om_cloud_site_tbl ocst  
+		 where site_manager = #{lgn_nm} and site_name = #{site_name} and site_no !=#{site_no}
+	</select>
+	 
+	<select id="selectDuplicateSiteAdd" parameterType="SiteManageVO" resultType="SiteManageVO">
+		select  * from om_cloud_site_tbl ocst  
+		where site_manager = #{lgn_nm} and site_address = #{site_address} and site_no !=#{site_no}		
+	</select>
+	
+	
+	
+	<select id="selectSiteBySiteNo" parameterType="SiteManageVO" resultType="SiteManageVO">
+	select  * from om_cloud_site_tbl ocst where 
+	site_manager =#{lgn_nm} and site_no =#{site_no}
+	</select>
+	
+	<select id="selectTopbarSiteList" parameterType="SiteManageVO" resultType="SiteManageVO">
+		 		select  * from om_cloud_site_tbl ocst 
+			where site_manager =#{lgn_nm}
+	</select>
+	<select id="selectCloud" parameterType="CloudVO" resultType="CloudVO">
+		 	 
+		 select * from om_cloud_tbl oct 
+		 order by cloud_no asc
+	</select>
+	
+	
+	<insert id="insertSite" parameterType="SiteManageVO">
+		INSERT INTO om_cloud_site_tbl(site_name , site_manager, cloud_no, site_address)
+		VALUES(#{site_name},#{site_manager},#{cloud_no},#{site_address});
+	</insert>
+	
+	<update id="updateSite" parameterType="SiteManageVO">
+		UPDATE om_cloud_site_tbl
+		SET site_name = #{site_name}, cloud_no = #{cloud_no}, site_address = #{site_address}
+		WHERE site_no = #{site_no}
+	</update>
+	
+	<delete id="deleteSite" parameterType="SiteManageVO">
+		DELETE FROM om_cloud_site_tbl 
+		WHERE site_no = #{site_no}
+	</delete>
+	
+	<!-- 
+	<if test="search_keyword != null and search_keyword != '' and search_type == 'cloud_company' ">
+			AND cloud_company LIKE CONCAT('%', #{search_keyword}, '%')
+		</if>
+		<if test="search_keyword != null and search_keyword != '' and search_type == 'cloud_nm' ">
+			AND cloud_nm LIKE CONCAT('%', #{search_keyword}, '%')
+		</if>
+		<if test="cnt_mode != 1">
+			LIMIT #{size} OFFSET #{offset}
+		</if>	
+	
+	
+	
+	 -->
+	 
+	 <select id="selectSiteAllByCloudNo" parameterType="SiteManageVO" resultType="SiteManageVO">
+	 	SELECT * FROM om_cloud_site_tbl ocst
+	 	WHERE cloud_no = #{cloud_no}
+	 </select>
+	 
+	 <select id="selectSiteAllBySiteNo" parameterType="SiteManageVO" resultType="SiteManageVO">
+	 	SELECT * FROM om_cloud_site_tbl ocst
+	 	LEFT JOIN om_cloud_tbl oct ON ocst.cloud_no = oct.cloud_no  
+	 	WHERE 1 = 1
+	 		 <if test="site_list != null and site_list.size() > 0">
+	        AND site_no IN
+	        <foreach item="item" collection="site_list" open="(" separator="," close=")">
+	            CAST(#{item} AS INTEGER)
+	        </foreach>
+    	</if>
+	 </select>
+	 
+	 <select id="selectSiteAllForList"  parameterType="SiteManageVO" resultType="SiteManageVO">
+	 	SELECT * FROM om_cloud_site_tbl ocst
+	 </select>
+
+	<select id="selectFirstSite" parameterType="SiteManageVO" resultType="SiteManageVO">
+		SELECT * FROM om_cloud_site_tbl ocst 
+		WHERE site_manager = #{site_manager}
+		ORDER BY site_no
+		LIMIT 1
+	</select>
+
+</mapper>
