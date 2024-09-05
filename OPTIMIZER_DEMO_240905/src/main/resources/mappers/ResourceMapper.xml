@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizerdemo.mapper.ResourceMapper">
+
+	<select id="selectResourceAllByPageNo" parameterType="ResourceVO" resultType="ResourceVO">
+		SELECT * FROM om_simulation_resource_tbl osrt 
+		WHERE page_no = #{page_no}
+			AND resource_org_size > -1
+			AND resource_status != 3
+		ORDER BY resource_name
+	</select>
+
+	<select id="selectResourceAllByPageNoTabulator" parameterType="ResourceVO" resultType="ResourceVO">
+		SELECT * FROM om_simulation_resource_tbl osrt 
+		WHERE page_no = #{page_no}
+			AND resource_org_size > -1
+			AND resource_status != 3
+		<if test='sort != null and sort.size()!=0'>
+			<foreach collection="sort" item="sortItem">
+				<choose>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_type")'>
+						ORDER BY osrt.resource_type <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_name")'>
+						ORDER BY osrt.resource_name <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_status")'>
+						ORDER BY osrt.resource_status <![CDATA[${sortItem.dir}]]> 
+					</when>
+					<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type1")'>
+						ORDER BY osrt.resource_new_size_type1 <![CDATA[${sortItem.dir}]]> 
+					</when>																																			
+					<when test='sortItem.field != null and sortItem.field.equals("resource_new_size_type2")'>
+						ORDER BY osrt.resource_new_size_type2 <![CDATA[${sortItem.dir}]]> 
+					</when>																																																		
+					<when test='sortItem.field != null and sortItem.field.equals("resource_org_size")'>
+						ORDER BY osrt.resource_org_size <![CDATA[${sortItem.dir}]]> 
+					</when>																																																		
+				</choose>
+			</foreach>
+		</if>
+		<if test='sort == null'>
+			ORDER BY resource_type, resource_name
+		</if>
+		<if test="cnt_mode != 1 and size != 0">
+			LIMIT #{size} OFFSET #{offset}
+		</if>			
+	</select>
+
+	<select id="selectResourceTypeCountByPage"  parameterType="ResourceVO"  resultType="java.util.HashMap">
+		SELECT COUNT(*), 
+			SUM(osrt.resource_new_size_type1) AS size1, 
+			CASE 
+				WHEN SUM(osrt.resource_new_size_type2) = 0 THEN SUM(osrt.resource_new_size_type1) 
+				ELSE SUM(osrt.resource_new_size_type2) 
+			END AS size2,
+			CASE 
+				WHEN SUM(osrt.resource_new_size_type2) = 0 THEN 0
+				ELSE ROUND((SUM(osrt.resource_new_size_type1) - SUM(osrt.resource_new_size_type2)) / SUM(osrt.resource_new_size_type1)::NUMERIC * 100, 2)
+			END AS percentage,	    
+			osrt.resource_type, 
+			osrt.resource_status
+		FROM om_simulation_resource_tbl osrt
+		WHERE page_no = #{page_no}
+			AND osrt.resource_type BETWEEN 1 AND 4
+			AND osrt.resource_org_size > 0
+			AND osrt.resource_status = 1
+		GROUP BY osrt.resource_type, osrt.resource_status 
+		ORDER BY osrt.resource_type     
+	</select>
+
+	<select id="selectResourceTimeAnalysisByPage" parameterType="PageVO" resultType="java.util.HashMap">
+		SELECT SUM(org_time) AS org_time, SUM(new_time) AS new_time,
+			(SUM(org_time)-SUM(new_time)) AS diff_time,
+			ROUND(((SUM(org_time) - SUM(new_time)) / SUM(org_time)::decimal) * 100, 2) AS percentage
+		FROM om_simulation_resource_tbl osrt 
+		WHERE page_no = #{page_no}
+	</select>
+	
+	<update id="updateResourceStatusByPageNo" parameterType="ResourceVO">
+		UPDATE om_simulation_resource_tbl
+		SET resource_status = #{resource_status}
+		WHERE page_no = #{page_no}
+	</update>
+	
+	<update id="updateResourceStatusByNid" parameterType="ResourceVO">
+		UPDATE om_simulation_resource_tbl
+		SET resource_status = #{resource_status}
+		WHERE nid = #{nid}
+	</update>
+	
+</mapper> 

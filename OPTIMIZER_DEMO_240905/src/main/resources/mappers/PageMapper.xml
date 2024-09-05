@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizerdemo.mapper.PageMapper">
+
+	<select id="selectPageByPageUrl" parameterType="PageVO" resultType="PageVO">
+		SELECT * FROM om_simulation_page_tbl ospt 
+		WHERE page_url = #{page_url}
+		ORDER BY created_at DESC 
+		LIMIT 1	
+	</select>
+
+	<select id="selectPageByPageNo" parameterType="PageVO" resultType="PageVO">
+		SELECT * FROM om_simulation_page_tbl ospt 
+		WHERE page_no = #{page_no}
+	</select>
+	
+	<update id="updatePageCollStatus" parameterType="PageVO">
+		UPDATE om_simulation_page_tbl 
+		SET page_coll_status = #{page_coll_status}
+		WHERE page_no = #{page_no}
+	</update>
+	
+	<update id="updatePageOptStatus" parameterType="PageVO">
+		UPDATE om_simulation_page_tbl 
+		SET page_opt_status = #{page_opt_status}
+		WHERE page_no = #{page_no}
+	</update>
+	
+	<update id="updatePageResult" parameterType="PageVO">
+		UPDATE om_simulation_page_tbl 
+		SET updt_dt = now() 
+			<if test="org_score != null">
+				, org_score = #{org_score}
+			</if>
+			<if test="new_score != null">
+				, new_score = #{new_score}
+			</if>
+			<if test="org_time != null">
+				, org_time = #{org_time}
+			</if>
+			<if test="new_time != null">
+				, new_time = #{new_time}
+			</if>
+		WHERE page_no = #{page_no}
+	</update>	
+	
+	<update id="updateOldPage" parameterType="PageVO">
+		UPDATE om_simulation_page_tbl 
+		SET is_complete = 1
+		WHERE page_url = #{page_url}	
+	</update>
+	<insert id="insertPage" parameterType="PageVO" useGeneratedKeys="true" keyProperty="page_no">
+		INSERT INTO public.om_simulation_page_tbl
+		(
+			page_url, 
+			is_complete, 
+			created_at, 
+			page_coll_status, 
+			page_opt_status, 
+			page_status, org_score, 
+			new_score, 
+			org_time, 
+			new_time
+		)
+		VALUES(
+			#{page_url}, 
+			0, 
+			now(), 
+			0, 
+			0, 
+			0,
+			0, 
+			0, 
+			0, 
+			0
+		);
+	</insert>
+
+</mapper>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wellconn.optimizerdemo.mapper.LightHouseMapper">
+
+	<select id="selectNow" resultType="String">
+		select now()
+	</select>
+	
+	<insert id="insertLightHouse" parameterType="LightHouseVO" useGeneratedKeys="true" keyProperty="lh_sn">
+		INSERT INTO public.om_lighthouse_log
+		(lh_json, page_url, page_status, page_no, rgstr_dt)
+		VALUES(#{lh_json}, #{page_url}, #{page_status}, #{page_no}, now());
+	</insert>
+	
+	<select id="selectLightHouse" parameterType="LightHouseVO" resultType="LightHouseVO">
+		SELECT * FROM om_lighthouse_log oll 
+		WHERE page_url = #{page_url}
+			AND page_status = #{page_status}
+			<if test="page_no != null">
+				AND page_no = #{page_no}
+			</if>
+		ORDER BY rgstr_dt DESC  
+		LIMIT 1
+	</select>
+	
+</mapper>

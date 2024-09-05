@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mybatis="http://mybatis.org/schema/mybatis-spring"
+	xsi:schemaLocation="http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring-1.2.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+
+	<!-- Root Context: defines shared resources visible to all other web components -->
+
+	<!-- 외부 properties 파일을 참조하는 설정 추가 -->
+	<context:property-placeholder location="classpath:app.properties" />
+
+	<!-- dataSource 빈 설정 -->
+	<!-- <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+		<property name="driverClassName" value="${db.driverClassName}" />
+		<property name="jdbcUrl" value="${db.jdbcUrl}" />
+		<property name="username" value="${db.username}" />
+		<property name="password" value="${db.password}" />
+		<property name="dataSourceProperties">
+			<props>
+				<prop key="cachePrepStmts">${db.dataSource.cachePrepStmts}</prop>
+				<prop key="prepStmtCacheSize">${db.dataSource.prepStmtCacheSize}</prop>
+				<prop key="prepStmtCacheSqlLimit">${db.dataSource.prepStmtCacheSqlLimit}</prop>
+			</props>
+		</property>
+	</bean> -->
+	<bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
+		<property name="driverClassName" value="net.sf.log4jdbc.sql.jdbcapi.DriverSpy" />
+		<property name="jdbcUrl" value="${db.jdbcUrl}" />
+		<property name="username" value="${db.username}" />
+		<property name="password" value="${db.password}" />
+        <property name="maximumPoolSize" value="10" />
+        <property name="minimumIdle" value="2" />
+        <property name="idleTimeout" value="30000" />
+        <property name="connectionTimeout" value="30000" />
+        <property name="leakDetectionThreshold" value="15000" />
+        <property name="poolName" value="MyHikariCP" />
+        <property name="dataSourceProperties">
+            <props>
+                <prop key="cachePrepStmts">${db.dataSource.cachePrepStmts}</prop>
+                <prop key="prepStmtCacheSize">${db.dataSource.prepStmtCacheSize}</prop>
+                <prop key="prepStmtCacheSqlLimit">${db.dataSource.prepStmtCacheSqlLimit}</prop>
+            </props>
+        </property>
+    </bean>
+	
+    <!-- HikariCP 로깅을 SLF4J로 설정 -->
+    <bean id="hikariLoggingConfigurer" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetClass" value="java.lang.System"/>
+        <property name="targetMethod" value="setProperty"/>
+        <property name="arguments">
+            <list>
+                <value>com.zaxxer.hikari.logging</value>
+                <value>SLF4J</value>
+            </list>
+        </property>
+    </bean>	
+	
+	<!-- 마이바티스 -->
+	<bean id="sqlSessionFactory"
+		class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="mapperLocations"
+			value="classpath:/mappers/**/*.xml"></property>
+		<property name="configLocation"
+			value="classpath:/mybatis-config.xml"></property>
+	</bean>
+	<!-- 매퍼 스캔 -->
+	<mybatis:scan base-package="com.wellconn.optimizerdemo.mapper"></mybatis:scan>
+
+	<!-- 컴포넌트 스캔 -->
+	<context:component-scan	base-package="com.wellconn.optimizerdemo.service"></context:component-scan>
+	<context:component-scan	base-package="com.wellconn.optimizerdemo.config"></context:component-scan>
+	<context:component-scan	base-package="com.wellconn.optimizerdemo.util"></context:component-scan>
+
+</beans>

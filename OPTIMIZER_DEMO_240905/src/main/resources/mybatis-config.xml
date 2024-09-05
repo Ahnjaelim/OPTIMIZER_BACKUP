@@ -1,0 +1,14 @@
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="false"/>
+        <setting name="logImpl" value="LOG4J2"/>
+    </settings>
+    <typeAliases>
+        <typeAlias alias="ResourceVO" type="com.wellconn.optimizerdemo.model.ResourceVO"/>
+        <typeAlias alias="PageVO" type="com.wellconn.optimizerdemo.model.PageVO"/>
+        <typeAlias alias="LightHouseVO" type="com.wellconn.optimizerdemo.model.LightHouseVO"/>
+    </typeAliases>    
+    
+</configuration>
